@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import catalogue, payment
+from app.routers import catalogue, connection, payment
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -16,5 +16,6 @@ app.add_middleware(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+app.include_router(connection.router, prefix="/api/connection")
 app.include_router(payment.router, prefix="/api/payment")
 app.include_router(catalogue.router, prefix="/api/catalogue")
