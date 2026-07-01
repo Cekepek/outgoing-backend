@@ -14,3 +14,19 @@ class ConnectionBase(BaseModel):
     code: str
     message: str
 
+class CatalogueRequest(BaseModel):
+    catalogueType: str = ""
+    additionalField1: Optional[str] = ""
+    additionalField2: Optional[str] = ""
+    additionalField3: Optional[str] = ""
+
+class CatalogueItem(BaseModel):
+    data: Optional[str] = None
+    value: Optional[str] = None
+
+class CatalogueResponse(BaseModel):
+    code: Optional[str] = None
+    agentSessionId: Optional[str] = None
+    message: Optional[str] = None
+    result: Optional[list[CatalogueItem]] = None
+
