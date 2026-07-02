@@ -47,6 +47,10 @@ def generate_signature(method: str, url: str, body: dict) -> tuple[str, int]:
     return authorization, str(int(timestamp))  # return timestamp to use as agentSessionId
 
 
-def get_sign_and_session_id(method: str, url: str, body: dict) -> tuple[str, int]:
-    signature, agent_session_id = generate_signature(method, url, body)
-    return signature, agent_session_id
+def build_request(method: str, url: str, body: dict) -> tuple[str, dict]:
+    timestamp = str(int(time.time()))
+    body["agentSessionId"] = timestamp 
+
+    signature, _ = generate_signature(method, url, body)
+
+    return signature, body

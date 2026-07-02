@@ -30,3 +30,13 @@ class CatalogueResponse(BaseModel):
     message: Optional[str] = None
     result: Optional[list[CatalogueItem]] = None
 
+class BankRequest(BaseModel):
+    paymentMode: str = ""
+    payoutCountry: str = ""
+
+class BankItem(BaseModel):
+    locationId: Optional[str] = None
+    locationName: Optional[str] = None
+    optionalField: Optional[str] = None
+
+
