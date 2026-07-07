@@ -2,8 +2,9 @@ from http.client import HTTPException
 
 from fastapi import APIRouter
 import httpx
+from sqlalchemy import null
 
-from app.schemas import BankItem, BankRequest, BaseResponse, CatalogueItem, CatalogueRequest, ExchangeRateItem, RateItem, RateRequest, ResponseSchema
+from app.schemas import BankItem, BankRequest, BaseResponse, CatalogueItem, CatalogueRequest, ErrorItems, ExchangeRateItem, RateItem, RateItemSuccess, RateRequest, ResponseSchema
 from app.config import settings
 from app.utils.signature import build_request
 
@@ -137,14 +138,12 @@ async def get_rate(rate_request: RateRequest):
             if(response.json().get("code") == "0"):
                 status = "success"
                 message = "Data fetched successfully"
+                data = RateItemSuccess.model_validate(response.json())
             elif(response.json().get("code") != "0"):
                 status = "error"
                 message = f"code {response.json().get('code')} from third party with message: {response.json().get('message', '')}"
+                data = ErrorItems.model_validate(response.json())
         
-        return {
-            "status": status,
-            "message": message,
-            "data": response.json() or []
-        }
+        return BaseResponse(status=status, message=message, data=data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

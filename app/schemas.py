@@ -1,4 +1,4 @@
-from typing import Generic, Literal, Optional, TypeVar
+from typing import Any, Generic, Literal, Optional, TypeVar, Union
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.generics import GenericModel
 
@@ -14,6 +14,13 @@ class BaseResponse(BaseModel, Generic[T]):
     status: str
     message: str
     data: T
+
+class ErrorItems(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    code: str
+    agent_session_id: str = Field(alias="agentSessionId")
+    message: str
 
 class ConnectionBase(BaseModel):
     code: str
@@ -65,7 +72,7 @@ class RateRequest(BaseModel):
             }
         }
 
-class RateItem(BaseModel):
+class RateItemSuccess(BaseModel):
     collect_amount: str = Field(..., alias="collectAmount")
     collect_currency: str = Field(..., alias="collectCurrency")
     service_charge: str = Field(..., alias="serviceCharge")
@@ -82,6 +89,8 @@ class RateItem(BaseModel):
     class Config:
         populate_by_name = True
 
+RateItem = Union[RateItemSuccess, ErrorItems]
+
 class ExchangeRateItem(BaseModel):
     send_country: str = Field(..., alias="sendCountry")
     send_currency: str = Field(..., alias="sendCurrency")
@@ -96,7 +105,7 @@ class ExchangeRateItem(BaseModel):
     class Config:
         populate_by_name = True
         
-class send_transaction_request(BaseModel):
+class SendTransactionRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     agent_session_id: str = Field(alias="agentSessionId")
@@ -188,3 +197,33 @@ class send_transaction_request(BaseModel):
     representative_contact_number: Optional[str] = Field(default="", alias="RepresentativeContactNumber")
 
     dynamic_fields: list[Any] = Field(default_factory=list, alias="dynamicFields")
+
+
+    
+class SendTransactionResponseSuccess(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    
+    confirmation_id: str = Field(alias="confirmationId")
+    agent_txn_id: str = Field(alias="agentTxnId")
+
+    collect_amount: str = Field(alias="collectAmount")       # monetary -> str
+    collect_currency: str = Field(alias="collectCurrency")
+    service_charge: str = Field(alias="serviceCharge")       # monetary -> str
+    gst_charge: str = Field(default="", alias="gstCharge")   # monetary -> str, can be empty
+
+    transfer_amount: str = Field(alias="transferAmount")     # monetary -> str
+    exchange_rate: str = Field(alias="exchangeRate")         # monetary -> str
+
+    payout_amount: str = Field(alias="payoutAmount")         # monetary -> str
+    payout_currency: str = Field(alias="payoutCurrency")
+
+    fee_discount: str = Field(alias="feeDiscount")           # monetary -> str
+    additional_premium_rate: str = Field(alias="additionalPremiumRate")  # monetary -> str
+
+    txn_date: str = Field(alias="txnDate")
+
+    settlement_rate: str = Field(alias="settlementRate")     # monetary -> str
+    send_commission: str = Field(alias="sendCommission")     # monetary -> str
+    settlement_amount: str = Field(alias="settlementAmount") # monetary -> str
+
+SendTransactionResponse = Union[SendTransactionResponseSuccess, ErrorItems]
