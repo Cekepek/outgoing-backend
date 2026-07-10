@@ -1,6 +1,5 @@
-from http.client import HTTPException
-
-from fastapi import APIRouter
+from typing import Any
+from fastapi import APIRouter, HTTPException
 import httpx
 from sqlalchemy import null
 
@@ -9,41 +8,63 @@ from app.config import settings
 from app.utils.signature import build_request
 
 router = APIRouter()
+COUNTRY_NAMES = {
+    "AUS": "Australia",
+    "CHN": "China",
+    "EUR": "Eropa",
+    "GBR": "Inggris",
+    "HKG": "Hong Kong",
+    "MYS": "Malaysia",
+    "PHL": "Filipina",
+    "SGP": "Singapura",
+    "THA": "Thailand",
+    # ...
+}# app/services/catalogue_enrichment.py
+def enrich_catalogue(catalogue_type: str, raw_result: list[dict]) -> list[dict]:
+    if catalogue_type == "CTY":
+        return [
+            {
+                "data": item["data"],
+                "value": item["value"],
+                "label": COUNTRY_NAMES.get(item["value"], item["value"]),
+            }
+            for item in raw_result
+        ]
 
-@router.post("/get_catalogue", response_model=ResponseSchema[list[CatalogueItem]])
+    # Unknown/unmapped catalogueType — pass through raw, don't crash
+    return raw_result
+@router.post("/get_catalogue", response_model=ResponseSchema[list[dict[str, Any]]])
 async def get_catalogue(catalogue_request: CatalogueRequest):
     try:
         url = f"{settings.payment_protocol}{settings.payment_host}{settings.payment_uri}/GetCatalogue"
-        signature, body =  build_request("POST", url, {
+        signature, body = build_request("POST", url, {
             "agentSessionId": "",
             "catalogueType": catalogue_request.catalogueType,
             "additionalField1": catalogue_request.additionalField1,
             "additionalField2": catalogue_request.additionalField2,
-            "additionalField3": catalogue_request.additionalField3
+            "additionalField3": catalogue_request.additionalField3,
         })
+
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                url,
-                json=body,
-                headers={"Authorization": signature}
-            )
-            
-            status = ""
-            message = ""
-            if(response.json().get("code") == "0"):
-                status = "success"
-                message = "Data fetched successfully"
-            elif(response.json().get("code") != "0"):
-                
-                status = "error"
-                message = f"code {response.json().get('code')} from third party with message: {response.json().get('message', '')}"
-                
-            return {
-                "status": status,
-                "message": message,
-                "data": response.json().get("result", [])
-            }
-    
+            response = await client.post(url, json=body, headers={"Authorization": signature})
+
+        payload = response.json()  # parse once
+
+        if payload.get("code") == "0":
+            status = "success"
+            message = "Data fetched successfully"
+        else:
+            status = "error"
+            message = f"code {payload.get('code')} from third party with message: {payload.get('message', '')}"
+
+        raw_result = payload.get("result", [])
+        enriched_data = enrich_catalogue(catalogue_request.catalogueType, raw_result)
+
+        return {
+            "status": status,
+            "message": message,
+            "data": enriched_data,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
