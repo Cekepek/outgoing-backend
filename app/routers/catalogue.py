@@ -18,8 +18,19 @@ COUNTRY_NAMES = {
     "PHL": "Filipina",
     "SGP": "Singapura",
     "THA": "Thailand",
-    # ...
-}# app/services/catalogue_enrichment.py
+}
+CURRENCY_NAME = {
+    "AUS": "AUD",
+    "CNY": "CNY",
+    "EUR": "EUR",
+    "GBP": "GBP",
+    "HKD": "HKD",
+    "MYR": "MYR",
+    "PHP": "PHP",
+    "SGD": "SGD",
+    "THB": "THB",
+}
+
 def enrich_catalogue(catalogue_type: str, raw_result: list[dict]) -> list[dict]:
     if catalogue_type == "CTY":
         return [
@@ -27,6 +38,7 @@ def enrich_catalogue(catalogue_type: str, raw_result: list[dict]) -> list[dict]:
                 "data": item["data"],
                 "value": item["value"],
                 "label": COUNTRY_NAMES.get(item["value"], item["value"]),
+                "currency": CURRENCY_NAME.get(item["value"], item["value"]),
             }
             for item in raw_result
         ]
