@@ -21,14 +21,25 @@ COUNTRY_NAMES = {
 }
 CURRENCY_NAME = {
     "AUS": "AUD",
-    "CNY": "CNY",
+    "CHN": "CNY",
     "EUR": "EUR",
-    "GBP": "GBP",
-    "HKD": "HKD",
-    "MYR": "MYR",
-    "PHP": "PHP",
-    "SGD": "SGD",
-    "THB": "THB",
+    "GBR": "GBP",
+    "HKG": "HKD",
+    "MYS": "MYR",
+    "PHL": "PHP",
+    "SGP": "SGD",
+    "THA": "THB",
+}
+BANK_NAME = {
+    "AUS": "AUSALL",
+    "CHN": "CHNBAN",
+    "EUR": "EURALL01",
+    "GBR": "GBRALL",
+    "HKG": "HKGABN",
+    "MYS": "MYSAFF",
+    "PHL": "PHLALLBA",
+    "SGP": "SGPALL",
+    "THA": "THABAN01",
 }
 
 def enrich_catalogue(catalogue_type: str, raw_result: list[dict]) -> list[dict]:
@@ -39,6 +50,7 @@ def enrich_catalogue(catalogue_type: str, raw_result: list[dict]) -> list[dict]:
                 "value": item["value"],
                 "label": COUNTRY_NAMES.get(item["value"], item["value"]),
                 "currency": CURRENCY_NAME.get(item["value"], item["value"]),
+                "bank": BANK_NAME.get(item["value"], item["value"]),
             }
             for item in raw_result
         ]

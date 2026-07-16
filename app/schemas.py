@@ -19,7 +19,6 @@ class ErrorItems(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     code: str
-    agent_session_id: str = Field(alias="agentSessionId")
     message: str
 
 class ConnectionBase(BaseModel):
@@ -38,7 +37,6 @@ class CatalogueItem(BaseModel):
 
 class CatalogueResponse(BaseModel):
     code: Optional[str] = None
-    agentSessionId: Optional[str] = None
     message: Optional[str] = None
     result: Optional[list[CatalogueItem]] = None
 
