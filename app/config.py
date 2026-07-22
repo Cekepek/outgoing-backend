@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     payment_protocol: str
     payment_host: str
     payment_uri: str
+    database_url: str
 
     class Config:
         env_file = ".env"
