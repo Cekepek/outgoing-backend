@@ -22,9 +22,30 @@ class User(Base):
     )
  
     sender: Mapped["Sender"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
- 
+    session: Mapped["SessionModel"] = relationship(back_populates="user", uselist=True, cascade="all, delete-orphan")
+    activity_logs: Mapped[list["ActivityLog"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+
     def __repr__(self) -> str:
         return f"<User id={self.id} username={self.username!r}>"
+
+class SessionModel(Base):
+    __tablename__ = "sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user: Mapped["User"] = relationship(back_populates="session")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+class ActivityLog(Base):
+    __tablename__ = "activity_logs"
+    
+    id_log: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    aktivitas: Mapped[str] = mapped_column(String)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user: Mapped["User"] = relationship(back_populates="activity_logs")
  
  
 class Sender(Base):
@@ -69,8 +90,6 @@ class Sender(Base):
     # --- Transaction Info ---
     sender_occupation: Mapped[str | None] = mapped_column(String(100))
     sender_source_of_fund: Mapped[str | None] = mapped_column(String(100))
-    sender_beneficiary_relationship: Mapped[str] = mapped_column(String(10), nullable=False)  # REL catalogue code
-    purpose_of_remittance: Mapped[str] = mapped_column(String(10), nullable=False)  # POR catalogue code
  
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

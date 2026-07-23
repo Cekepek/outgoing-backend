@@ -1,6 +1,7 @@
 from typing import Any, Generic, Literal, Optional, TypeVar, Union
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field,EmailStr, field_validator
 from pydantic.generics import GenericModel
+from datetime import date
 
 
 T = TypeVar("T")
@@ -225,3 +226,80 @@ class SendTransactionResponseSuccess(BaseModel):
     settlement_amount: str = Field(alias="settlementAmount") # monetary -> str
 
 SendTransactionResponse = Union[SendTransactionResponseSuccess, ErrorItems]
+
+class LoginSchema(BaseModel):
+    username: str
+    password: str 
+
+
+
+class RegisterSchema(BaseModel):
+    # --- User account fields ---
+    username: str
+    password: str
+    pin: str
+
+    # --- Sender identity ---
+    sender_customer_type: str  # "B" | "I"
+    sender_first_name: Optional[str] = None
+    sender_middle_name: Optional[str] = None
+    sender_last_name: Optional[str] = None
+    sender_company_name: Optional[str] = None
+    sender_company_reg_number: Optional[str] = None
+    sender_company_incorporate_date: Optional[date] = None
+    sender_gender: Optional[str] = None
+    sender_native_first_name: Optional[str] = None
+    sender_native_last_name: Optional[str] = None
+
+    # --- Contact & Address ---
+    sender_address: Optional[str] = None
+    sender_city: Optional[str] = None
+    sender_state: Optional[str] = None
+    sender_zip_code: Optional[str] = None
+    sender_country: str  # ISO-3, required
+    sender_mobile: Optional[str] = None
+    sender_email: Optional[EmailStr] = None
+    sender_nationality: Optional[str] = None
+
+    # --- ID Document ---
+    sender_id_type: str
+    sender_id_number: str
+    sender_id_issue_country: Optional[str] = None
+    sender_id_issue_date: Optional[date] = None
+    sender_id_expire_date: Optional[date] = None
+    sender_date_of_birth: Optional[date] = None
+    sender_secondary_id_type: Optional[str] = None
+    sender_secondary_id_number: Optional[str] = None
+
+    # --- Transaction Info ---
+    sender_occupation: Optional[str] = None
+    sender_source_of_fund: Optional[str] = None
+
+    # --- Validation ---
+    @field_validator("username")
+    @classmethod
+    def username_length(cls, v: str) -> str:
+        if len(v) < 4:
+            raise ValueError("Username minimal 6 karakter")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def password_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password minimal 8 karakter")
+        return v
+
+    @field_validator("pin")
+    @classmethod
+    def pin_format(cls, v: str) -> str:
+        if not v.isdigit() or len(v) != 6:
+            raise ValueError("PIN harus 6 digit angka")
+        return v
+
+    @field_validator("sender_customer_type")
+    @classmethod
+    def customer_type_valid(cls, v: str) -> str:
+        if v not in ("B", "I"):
+            raise ValueError("sender_customer_type harus 'B' atau 'I'")
+        return v
