@@ -37,7 +37,7 @@ def login(
             "message": "Akun tidak ditemukan"
         }
 
-    if not bcrypt.verify(login_data.password, user.password):
+    if not bcrypt.verify(login_data.password, user.password_hash):
         return {
             "status": "failed",
             "message": "Password Salah"
@@ -46,13 +46,13 @@ def login(
     session_id = str(uuid.uuid4())
     session = SessionModel(
         session_id=session_id,
-        user_id=user.id_user,
+        user_id=user.id,
         expires_at=datetime.utcnow() + timedelta(days=1)
     )
     db.add(session)
 
     activity = ActivityLog(
-        user_id=user.id_user,
+        user_id=user.id,
         aktivitas="Pengguna melakukan login",
     )
     db.add(activity)
