@@ -118,7 +118,6 @@ def register(data: RegisterSchema, db: Session = Depends(get_db)):
             sender_secondary_id_type=data.sender_secondary_id_type,
             sender_secondary_id_number=data.sender_secondary_id_number,
             sender_occupation=data.sender_occupation,
-            sender_source_of_fund=data.sender_source_of_fund,
             sender_mobile=data.sender_mobile,
             sender_email=data.sender_email,
             sender_company_reg_number=data.sender_company_reg_number,

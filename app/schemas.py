@@ -273,7 +273,6 @@ class RegisterSchema(BaseModel):
 
     # --- Transaction Info ---
     sender_occupation: Optional[str] = None
-    sender_source_of_fund: Optional[str] = None
 
     # --- Validation ---
     @field_validator("username")
