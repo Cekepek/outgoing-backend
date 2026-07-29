@@ -70,6 +70,7 @@ def login(
             "has_sender_profile": user.sender is not None,
             "sender": {
                 "sender_customer_type": user.sender.sender_customer_type,
+                "sender_id_number": user.sender.sender_id_number,
                 "sender_first_name": user.sender.sender_first_name,
                 "sender_last_name": user.sender.sender_last_name,
                 "sender_company_name": user.sender.sender_company_name,
