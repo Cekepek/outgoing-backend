@@ -155,6 +155,7 @@ async def get_exchange_rate():
             "data": response.json() or [] 
         }
     except Exception as e:
+        print(f"[ERROR get_catalogue] {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
