@@ -90,6 +90,7 @@ async def get_catalogue(catalogue_request: CatalogueRequest):
             "data": enriched_data,
         }
     except Exception as e:
+        print(f"[ERROR get_catalogue] {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/get_bank", response_model=ResponseSchema[list[BankItem]])
