@@ -106,7 +106,7 @@ class ExchangeRateItem(BaseModel):
         
 class SendTransactionRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-
+    
     agent_session_id: str = Field(alias="agentSessionId")
     agent_txn_id: str = Field(alias="agentTxnId")
     location_id: str = Field(alias="locationId")
@@ -270,3 +270,95 @@ class RegisterSchema(BaseModel):
         if v not in ("B", "I"):
             raise ValueError("sender_customer_type harus 'B' atau 'I'")
         return v
+
+
+class LightRemitSendTransactionPayload(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    agent_session_id: str = Field(alias="agentSessionId")
+    agent_txn_id: str = Field(alias="agentTxnId")
+    location_id: str = Field(alias="locationId")
+    purpose_of_remittance: str = Field(alias="purposeOfRemittance")
+
+    # --- Sender ---
+    sender_customer_type: str = Field(alias="senderCustomerType")
+    sender_first_name: Optional[str] = Field(default="", alias="senderFirstName")
+    sender_middle_name: Optional[str] = Field(default="", alias="senderMiddleName")
+    sender_last_name: Optional[str] = Field(default="", alias="senderLastName")
+    sender_company_name: Optional[str] = Field(default="", alias="senderCompanyName")
+    sender_company_reg_number: Optional[str] = Field(default="", alias="senderCompanyRegNumber")
+    sender_company_incorporate_date: Optional[str] = Field(default="", alias="senderCompanyIncorporateDate")
+    sender_gender: Optional[str] = Field(default="", alias="senderGender")
+    sender_native_first_name: Optional[str] = Field(default="", alias="senderNativeFirstName")
+    sender_native_last_name: Optional[str] = Field(default="", alias="senderNativeLastName")
+    sender_address: Optional[str] = Field(default="", alias="senderAddress")
+    sender_city: Optional[str] = Field(default="", alias="senderCity")
+    sender_state: Optional[str] = Field(default="", alias="senderState")
+    sender_zip_code: Optional[str] = Field(default="", alias="senderZipCode")
+    sender_country: str = Field(alias="senderCountry")
+    sender_mobile: Optional[str] = Field(default="", alias="senderMobile")
+    sender_email: Optional[str] = Field(default="", alias="senderEmail")
+    sender_nationality: Optional[str] = Field(default="", alias="senderNationality")
+    sender_id_type: str = Field(alias="senderIdType")
+    sender_id_number: str = Field(alias="senderIdNumber")
+    sender_id_issue_country: Optional[str] = Field(default="", alias="senderIdIssueCountry")
+    sender_id_issue_date: Optional[str] = Field(default="", alias="senderIdIssueDate")
+    sender_id_expire_date: Optional[str] = Field(default="", alias="senderIdExpireDate")
+    sender_date_of_birth: Optional[str] = Field(default="", alias="senderDateOfBirth")
+    sender_secondary_id_type: Optional[str] = Field(default="", alias="senderSecondaryIdType")
+    sender_secondary_id_number: Optional[str] = Field(default="", alias="senderSecondaryIdNumber")
+    sender_occupation: Optional[str] = Field(default="", alias="senderOccupation")
+    sender_beneficiary_relationship: str = Field(alias="senderBeneficiaryRelationship")
+    sender_source_of_fund: str = Field(alias="senderSourceOfFund")
+    receiver_first_name: str = Field(alias="receiverFirstName")
+    receiver_middle_name: Optional[str] = Field(default="", alias="receiverMiddleName")
+    receiver_last_name: str = Field(alias="receiverLastName")
+    receiver_address: str = Field(alias="receiverAddress")
+    receiver_contact_number: str = Field(alias="receiverContactNumber")
+    receiver_date_of_birth: str = Field(alias="receiverDateOfBirth")
+    receiver_state: str = Field(alias="receiverState")
+    receiver_area_town: Optional[str] = Field(default="", alias="receiverAreaTown")
+    receiver_city: Optional[str] = Field(default="", alias="receiverCity")
+    receiver_zip_code: str = Field(alias="receiverZipCode")
+    receiver_country: str = Field(alias="receiverCountry")
+    receiver_nationality: str = Field(alias="receiverNationality")
+    receiver_id_type: str = Field(alias="receiverIdType")
+    receiver_id_number: str = Field(alias="receiverIdNumber")
+    receiver_email: str = Field(alias="receiverEmail")
+    receiver_customer_type: str = Field(alias="receiverCustomerType")
+    receiver_native_firstname: Optional[str] = Field(default="", alias="receiverNativeFirstname")
+    receiver_native_lastname: Optional[str] = Field(default="", alias="receiverNativeLastname")
+    receiver_account_type: str = Field(alias="receiverAccountType")
+    receiver_occupation: str = Field(alias="receiverOccupation")
+    receiver_wallet_id_number: Optional[str] = Field(default="", alias="receiverWalletIdNumber")
+
+    # --- Receiver company (optional, used for corporate receivers) ---
+    receiver_company_name: Optional[str] = Field(default="", alias="receiverCompanyName")
+    receiver_company_reg_number: Optional[str] = Field(default="", alias="receiverCompanyRegNumber")
+    receiver_company_incorporate_date: Optional[str] = Field(default="", alias="receiverCompanyIncorporateDate")
+
+    # --- Transaction / payout ---
+    calc_by: str = Field(alias="calcBy")
+    transfer_amount: str = Field(alias="transferAmount")  # monetary -> str
+    remit_currency: str = Field(alias="remitCurrency")
+    payout_currency: str = Field(alias="payoutCurrency")
+    payment_mode: str = Field(alias="paymentMode")
+    bank_name: Optional[str] = Field(default="", alias="bankName")
+    bank_branch_name: Optional[str] = Field(default="", alias="bankBranchName")
+    bank_branch_code: Optional[str] = Field(default="", alias="bankBranchCode")
+    bank_account_number: Optional[str] = Field(default="", alias="bankAccountNumber")
+    swift_code: Optional[str] = Field(default="", alias="swiftCode")
+
+    # --- Representative (optional, used when a third party acts on behalf of sender/receiver) ---
+    representative_name: Optional[str] = Field(default="", alias="RepresentativeName")
+    representative_customer_type: Optional[str] = Field(default="", alias="RepresentativeCustomerType")
+    representative_id_type: Optional[str] = Field(default="", alias="RepresentativeIdType")
+    representative_id_number: Optional[str] = Field(default="", alias="RepresentativeIdNumber")
+    representative_date_of_birth: Optional[str] = Field(default="", alias="RepresentativeDateOfBirth")
+    representative_nationality: Optional[str] = Field(default="", alias="RepresentativeNationality")
+    representative_address: Optional[str] = Field(default="", alias="RepresentativeAddress")
+    representative_contact_number: Optional[str] = Field(default="", alias="RepresentativeContactNumber")
+
+    dynamic_fields: list[Any] = Field(default_factory=list, alias="dynamicFields")
+    # --- Receiver / Representative / dynamicFields unchanged from before ---
+    # ...

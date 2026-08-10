@@ -1,3 +1,6 @@
+from app.models import Sender
+from sqlalchemy.orm import Session
+from app.services.schemasService import build_lightremit_payload
 from fastapi import APIRouter, HTTPException
 import httpx
 from app.config import settings
@@ -6,10 +9,18 @@ from app.utils.signature import build_request
 
 router = APIRouter()
 
+async def get_sender_from_db(db: Session, sender_id: int) -> Sender:
+    sender = db.query(Sender).filter(Sender.id == sender_id).first()
+    if not sender:
+        raise HTTPException(status_code=404, detail="Sender not found")
+    return sender
+
 @router.post("/send_transaction", response_model=BaseResponse[SendTransactionResponse])
 async def send_transaction(send_transaction_request: SendTransactionRequest):
     try:
         url = f"{settings.payment_protocol}{settings.payment_host}{settings.payment_uri}/SendTransaction"
+        sender = await get_sender_from_db()
+        payload = await build_lightremit_payload(send_transaction_request, sender)
         body = send_transaction_request.model_dump(by_alias=True)
         body["agentSessionId"] = ""
         signature, body =  build_request("POST", url,body)
