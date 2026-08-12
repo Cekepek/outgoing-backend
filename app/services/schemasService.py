@@ -7,7 +7,8 @@ def _fmt_date(d: date | None) -> str:
 
 async def build_lightremit_payload(
     req: SendTransactionRequest,
-    sender: Sender,  # your DB model matching the schema you posted
+    sender: Sender,
+    agent_session_id: str, agent_txn_id: str
 ) -> LightRemitSendTransactionPayload:
     sender_fields = dict(
         sender_customer_type=sender.sender_customer_type,
@@ -51,8 +52,8 @@ async def build_lightremit_payload(
         )
 
     return LightRemitSendTransactionPayload(
-        agent_session_id=req.agent_session_id,
-        agent_txn_id=req.agent_txn_id,
+        agent_session_id=agent_session_id,
+        agent_txn_id=agent_txn_id,
         location_id=req.location_id,
         purpose_of_remittance=req.purpose_of_remittance,
         sender_beneficiary_relationship=req.sender_beneficiary_relationship,

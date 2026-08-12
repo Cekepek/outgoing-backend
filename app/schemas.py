@@ -106,9 +106,8 @@ class ExchangeRateItem(BaseModel):
         
 class SendTransactionRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    
-    agent_session_id: str = Field(alias="agentSessionId")
-    agent_txn_id: str = Field(alias="agentTxnId")
+    agent_session_id: Optional[str] = None
+    agent_txn_id: Optional[str] = None
     location_id: str = Field(alias="locationId")
     sender_source_of_fund: str = Field(alias="senderSourceOfFund")
     sender_beneficiary_relationship: str = Field(alias="senderBeneficiaryRelationship")

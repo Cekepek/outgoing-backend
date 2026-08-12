@@ -1,3 +1,4 @@
+from app.utils.signature import generate_agent_txn_id
 from app.services.apiService import get_current_user
 from app.models import User
 from sqlalchemy.sql.functions import current_user
@@ -32,10 +33,11 @@ async def send_transaction(send_transaction_request: SendTransactionRequest,
         sender = current_user.sender
         url = f"{settings.payment_protocol}{settings.payment_host}{settings.payment_uri}/SendTransaction"
         sender = await get_sender_from_db(db, sender.id)
-        payload = await build_lightremit_payload(send_transaction_request, sender)
-        payload["agentSessionId"] = ""  # TODO: confirm this should always be empty
+        agent_txn_id = generate_agent_txn_id()
+        agent_session_id = ""
+        payload = await build_lightremit_payload(send_transaction_request, sender, agent_session_id, agent_txn_id)
 
-        signature, payload = build_request("POST", url, payload)
+        signature, payload = build_request("POST", url, payload.model_dump(by_alias=True))
 
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(url, json=payload, headers={"Authorization": signature})
@@ -43,6 +45,7 @@ async def send_transaction(send_transaction_request: SendTransactionRequest,
         try:
             raw = response.json()
         except ValueError:
+            print(raw)
             raise HTTPException(status_code=502, detail="Invalid response from payment provider")
 
         if raw.get("code") == "0":
@@ -60,5 +63,6 @@ async def send_transaction(send_transaction_request: SendTransactionRequest,
     except HTTPException:
         raise
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=str(e))
     

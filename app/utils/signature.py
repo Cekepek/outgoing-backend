@@ -5,6 +5,8 @@ import time
 import json
 from urllib.parse import quote
 from app.config import settings
+import random
+import string
 
 def generate_signature(method: str, url: str, body: dict) -> tuple[str, int]:
     app_id = settings.payment_api_key         # api-key
@@ -54,3 +56,17 @@ def build_request(method: str, url: str, body: dict) -> tuple[str, dict]:
     signature, _ = generate_signature(method, url, body)
 
     return signature, body
+
+
+def generate_agent_txn_id() -> str:
+    """
+    Generates a unique transaction ID for LightRemit's agentTxnId field.
+    Constraint: max 20 characters, string.
+    Format: <13-digit epoch millis><6 random uppercase alphanumeric chars> = 19 chars
+    """
+    timestamp_ms = str(int(time.time() * 1000))  # 13 digits, e.g. 1755000000000
+    random_suffix = ''.join(
+        random.choices(string.ascii_uppercase + string.digits, k=6)
+    )
+    txn_id = f"{timestamp_ms}{random_suffix}"
+    return txn_id[:20]  # hard safety cap, though this format is naturally 19 chars

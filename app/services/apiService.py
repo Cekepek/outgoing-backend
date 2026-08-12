@@ -1,3 +1,4 @@
+from datetime import timezone
 from app.models import User
 from datetime import datetime
 from fastapi import HTTPException
@@ -14,7 +15,7 @@ async def get_current_session(
     session = db.query(SessionModel).filter(SessionModel.session_id == session_id).first()
     if not session:
         raise HTTPException(status_code=401, detail="Invalid session")
-    if session.expires_at < datetime.utcnow():
+    if session.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=401, detail="Session expired")
     return session
 
