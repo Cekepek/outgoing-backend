@@ -55,7 +55,6 @@ class RateRequest(BaseModel):
     calc_by: Literal["C", "P"] = Field(..., alias="calcBy") 
     payout_currency: str = Field(..., alias="payoutCurrency")
     payment_mode: str = Field(..., alias="paymentMode")
-    location_id: str = Field(..., alias="locationId")
     payout_country: str = Field(..., alias="payoutCountry")
     class Config:
         populate_by_name = True
