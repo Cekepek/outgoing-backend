@@ -63,7 +63,7 @@ class Sender(Base):
     sender_company_name: Mapped[str | None] = mapped_column(String(255))
     sender_company_reg_number: Mapped[str | None] = mapped_column(String(100))
     sender_company_incorporate_date: Mapped[date | None] = mapped_column(Date)
-    sender_gender: Mapped[str | None] = mapped_column(String(1))
+    sender_gender: Mapped[str | None] = mapped_column(String(10))
     sender_native_first_name: Mapped[str | None] = mapped_column(String(150))
     sender_native_last_name: Mapped[str | None] = mapped_column(String(150))
  

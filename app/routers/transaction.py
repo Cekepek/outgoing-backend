@@ -36,7 +36,7 @@ async def send_transaction(send_transaction_request: SendTransactionRequest,
         agent_txn_id = generate_agent_txn_id()
         agent_session_id = ""
         payload = await build_lightremit_payload(send_transaction_request, sender, agent_session_id, agent_txn_id)
-
+        print(payload)
         signature, payload = build_request("POST", url, payload.model_dump(by_alias=True))
 
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -44,11 +44,13 @@ async def send_transaction(send_transaction_request: SendTransactionRequest,
 
         try:
             raw = response.json()
+            # print(raw)
         except ValueError:
-            print(raw)
+            # print(raw)
             raise HTTPException(status_code=502, detail="Invalid response from payment provider")
 
         if raw.get("code") == "0":
+            print(SendTransactionResponseSuccess.model_validate(raw))
             return BaseResponse(
                 status="success",
                 message="Transaction accepted",
