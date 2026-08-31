@@ -35,3 +35,4 @@ async def check_connection():
             headers={"Authorization": signature}
         )
         return response.json()
+

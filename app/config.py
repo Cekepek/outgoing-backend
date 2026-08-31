@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     payment_host: str
     payment_uri: str
     database_url: str
+    payment_host_transferku: str
+    payment_client_id_transferku: str
+    payment_client_secret_transferku: str
+    payment_private_key_transferku: str
+    payment_partner_id_transferku: str
 
     class Config:
         env_file = ".env"
