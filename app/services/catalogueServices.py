@@ -32,7 +32,7 @@ async def fetch_rate(
     payment_mode: str,
     location_id: str,
     payout_country: str,
-) -> dict | None:
+) -> tuple[dict | None, str | None]:
     url = f"{settings.payment_protocol}{settings.payment_host}{settings.payment_uri}/GetEXRate"
     signature, body = build_request("POST", url, {
         "agentSessionId": "",
@@ -43,16 +43,21 @@ async def fetch_rate(
         "locationId": location_id,
         "payoutCountry": payout_country,
     })
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.post(url, json=body, headers={"Authorization": signature})
-        response.raise_for_status()
-        payload = response.json()
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(url, json=body, headers={"Authorization": signature})
+            response.raise_for_status()
+            payload = response.json()
 
-    if payload.get("code") != "0":
-        print(f"[WARN fetch_rate] locationId={location_id} failed: {payload.get('message', '')}")
-        return None
+        if payload.get("code") != "0":
+            err_msg = payload.get("message", "")
+            print(f"[WARN fetch_rate] locationId={location_id} failed: {err_msg}")
+            return None, err_msg
 
-    return payload
+        return payload, None
+    except Exception as e:
+        print(f"[WARN fetch_rate] locationId={location_id} exception: {e}")
+        return None, str(e)
 
 async def best_bank_for_country(
     payout_country: str,
@@ -60,13 +65,17 @@ async def best_bank_for_country(
     transfer_amount: str,
     calc_by: str,
     payment_mode: str,
-) -> dict | None:
-    banks = await fetch_bank_list(payout_country)
+) -> tuple[dict | None, str | None]:
+    try:
+        banks = await fetch_bank_list(payout_country)
+    except Exception as e:
+        print(f"[WARN best_bank_for_country] fetch_bank_list failed: {e}")
+        return None, str(e)
 
     # exclude aggregate "ALL BANKS" style entries — not a real payout bank
-    real_banks = [b for b in banks if b["locationId"] != f"{payout_country[:3].upper()}ALL"]
+    real_banks = [b for b in banks if b.get("locationId") != f"{payout_country[:3].upper()}ALL"]
     if not real_banks:
-        return None
+        return None, "No banks found for this country"
 
     rate_results = await asyncio.gather(*[
         fetch_rate(
@@ -81,17 +90,27 @@ async def best_bank_for_country(
     ], return_exceptions=True)
 
     candidates = []
+    errors = []
     for bank, result in zip(real_banks, rate_results):
-        if isinstance(result, Exception) or result is None:
+        if isinstance(result, Exception):
+            errors.append(str(result))
             continue
-        candidates.append({"bank": bank, "rate": result})
+        if isinstance(result, tuple):
+            rate, err = result
+            if rate is not None:
+                candidates.append({"bank": bank, "rate": rate})
+            elif err:
+                errors.append(err)
+        elif result is not None:
+            candidates.append({"bank": bank, "rate": result})
 
     if not candidates:
-        return None
+        err_msg = errors[0] if errors else "No exchange rate available"
+        return None, err_msg
 
     # payoutAmount is already net of serviceCharge/vatCharge — best single metric
     best = max(candidates, key=lambda c: float(c["rate"]["payoutAmount"]))
-    return best
+    return best, None
     
 #TRANSFERKU
 PAYERS_NOT_FOUND_STATUS = "1000997"
@@ -209,7 +228,7 @@ async def fetch_quote_transferku(
     payout_currency: str,
     amount: float | int,
     mode: str = "DESTINATION_AMOUNT",
-) -> dict | None:
+) -> tuple[dict | None, str | None]:
     url = f"{settings.payment_host_transferku}/v1/quotes"
     formatted_amount = int(amount) if isinstance(amount, (int, float)) and float(amount).is_integer() else amount
     body = {
@@ -235,13 +254,19 @@ async def fetch_quote_transferku(
             timeout=15.0
         )
         resp.raise_for_status()
-        return resp.json()
+        return resp.json(), None
     except httpx.HTTPStatusError as e:
-        print(f"[ERROR fetch_quote_transferku] payer_id={payer_id} HTTP {e.response.status_code}: {e.response.text}")
-        return None
+        err_text = e.response.text
+        print(f"[ERROR fetch_quote_transferku] payer_id={payer_id} HTTP {e.response.status_code}: {err_text}")
+        try:
+            err_json = e.response.json()
+            err_msg = err_json.get("message") or err_json.get("status_message") or err_text
+        except Exception:
+            err_msg = err_text
+        return None, err_msg
     except Exception as e:
         print(f"[ERROR fetch_quote_transferku] payer_id={payer_id} {type(e).__name__}: {e}")
-        return None
+        return None, str(e)
 
 
 def _extract_transferku_amounts(quote: dict) -> tuple[float, float]:
@@ -292,13 +317,23 @@ def _extract_transferku_amounts(quote: dict) -> tuple[float, float]:
     return source_amt, dest_amt
 
 
+def _format_error_message(lightremit_error: str | None, transferku_error: str | None = None) -> str:
+    if lightremit_error and "service charge is not defined" in lightremit_error.lower():
+        return "the amount is too high or too low"
+    if lightremit_error:
+        return lightremit_error
+    if transferku_error:
+        return transferku_error
+    return "Data not found"
+
+
 async def compare_transferku_and_lightremit(
     payout_country: str,
     payout_currency: str,
     transfer_amount: float | str,
     calc_by: str = "P",
     payment_mode: str = "B",
-) -> dict | None:
+) -> tuple[dict | None, str | None]:
     amount_float = transfer_amount
 
     # 1. Concurrently fetch LightRemit best bank rate and Transferku valid countries
@@ -311,15 +346,21 @@ async def compare_transferku_and_lightremit(
     )
     valid_countries_task = get_countries_with_valid_payers()
 
-    lightremit_result, valid_countries = await asyncio.gather(
+    lr_response, valid_countries = await asyncio.gather(
         lightremit_task,
         valid_countries_task,
         return_exceptions=True
     )
 
-    if isinstance(lightremit_result, Exception):
-        print(f"[WARN compare_transferku_and_lightremit] LightRemit failed: {lightremit_result}")
-        lightremit_result = None
+    lightremit_result = None
+    lightremit_error = None
+    if isinstance(lr_response, Exception):
+        print(f"[WARN compare_transferku_and_lightremit] LightRemit failed: {lr_response}")
+        lightremit_error = str(lr_response)
+    elif isinstance(lr_response, tuple):
+        lightremit_result, lightremit_error = lr_response
+    elif lr_response is not None:
+        lightremit_result = lr_response
 
     if isinstance(valid_countries, Exception):
         print(f"[WARN compare_transferku_and_lightremit] get_countries_with_valid_payers failed: {valid_countries}")
@@ -338,12 +379,13 @@ async def compare_transferku_and_lightremit(
                 "chosen_agent": "LIGHTREMIT",
                 "bank": lightremit_result.get("bank"),
                 "rate": lightremit_result.get("rate"),
-            }
-        return None
+            }, None
+        return None, _format_error_message(lightremit_error, "Country not supported by Transferku")
 
     # 3. Country is supported by Transferku -> fetch quote(s) from /v1/quotes
     payer_ids = matching_country.get("payer_ids", [])
     transferku_quote = None
+    transferku_errors = []
 
     async with httpx.AsyncClient(timeout=15.0) as client:
         # Request quote for available valid payer(s)
@@ -360,7 +402,19 @@ async def compare_transferku_and_lightremit(
         ]
         quote_results = await asyncio.gather(*quote_tasks, return_exceptions=True)
 
-        valid_quotes = [q for q in quote_results if isinstance(q, dict) and q]
+        valid_quotes = []
+        for q in quote_results:
+            if isinstance(q, Exception):
+                transferku_errors.append(str(q))
+            elif isinstance(q, tuple):
+                quote, err = q
+                if quote:
+                    valid_quotes.append(quote)
+                elif err:
+                    transferku_errors.append(err)
+            elif q:
+                valid_quotes.append(q)
+
         if valid_quotes:
             # Pick best Transferku quote (lowest source amount if destination amount mode)
             transferku_quote = min(
@@ -370,20 +424,21 @@ async def compare_transferku_and_lightremit(
 
     # 4. Compare results
     if transferku_quote is None and lightremit_result is None:
-        return None
+        tk_err = transferku_errors[0] if transferku_errors else None
+        return None, _format_error_message(lightremit_error, tk_err)
 
     if transferku_quote is None:
         return {
             "chosen_agent": "LIGHTREMIT",
             "bank": lightremit_result.get("bank"),
             "rate": lightremit_result.get("rate"),
-        }
+        }, None
 
     if lightremit_result is None:
         return {
             "chosen_agent": "TRANSFERKU",
             "quote": transferku_quote,
-        }
+        }, None
 
     # Both succeeded -> compare final amounts
     lr_rate = lightremit_result.get("rate", {})
@@ -422,10 +477,10 @@ async def compare_transferku_and_lightremit(
         return {
             "chosen_agent": "TRANSFERKU",
             "quote": transferku_quote,
-        }
+        }, None
     else:
         return {
             "chosen_agent": "LIGHTREMIT",
             "bank": lightremit_result.get("bank"),
             "rate": lightremit_result.get("rate"),
-        }
+        }, None

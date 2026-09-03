@@ -174,7 +174,7 @@ async def get_exchange_rate():
 @router.post("/get_rate")
 async def get_rate(rate_request: RateRequest):
     try:
-        result = await compare_transferku_and_lightremit(
+        result, error_message = await compare_transferku_and_lightremit(
             payout_country=rate_request.payout_country,
             payout_currency=rate_request.payout_currency,
             transfer_amount=rate_request.transfer_amount,
@@ -184,6 +184,6 @@ async def get_rate(rate_request: RateRequest):
         if result is not None:
             return BaseResponse(status="success", message="Data fetched successfully", data=result)
         else:
-            return BaseResponse(status="error", message="Data not found", data=[])
+            return BaseResponse(status="error", message=error_message or "Data not found", data=[])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
