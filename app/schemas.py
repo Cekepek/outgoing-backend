@@ -41,6 +41,13 @@ class CatalogueResponse(BaseModel):
     message: Optional[str] = None
     result: Optional[list[CatalogueItem]] = None
 
+class TransferkuPurposeRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    iso_code: str = Field(..., alias="isoCode")
+    payer_id: str = Field(..., alias="payerId")
+    transaction_type: Optional[str] = Field(default=None, alias="transactionType")
+
 class BankRequest(BaseModel):
     paymentMode: str = ""
     payoutCountry: str = ""

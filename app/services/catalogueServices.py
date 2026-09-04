@@ -1,10 +1,12 @@
 import asyncio
 from datetime import datetime
+import json
 import random
 import string
 from fastapi import HTTPException
 import httpx
 from app.utils.signature import build_request
+from app.utils.redis import redis_client
 from app.config import settings
 
 
@@ -179,7 +181,21 @@ def payer_has_valid_transaction_type(payer: dict) -> bool:
     return False
 
 
-async def get_countries_with_valid_payers() -> list[dict]:
+REDIS_TRANSFERKU_VALID_COUNTRIES_KEY = "transferku:valid_countries"
+
+
+async def get_countries_with_valid_payers(force_refresh: bool = False) -> list[dict]:
+    # 1. Check if the key exists in Redis first
+    if not force_refresh:
+        try:
+            cached_data = await redis_client.get(REDIS_TRANSFERKU_VALID_COUNTRIES_KEY)
+            if cached_data:
+                print("[INFO] Retrieved valid Transferku regions & payers from Redis cache")
+                return json.loads(cached_data)
+        except Exception as e:
+            print(f"[WARN Redis get] Failed to read cache: {e}")
+
+    # 2. Key does not exist -> Fetch from Transferku APIs
     async with httpx.AsyncClient(timeout=30.0) as client:
         countries = await fetch_countries(client)
 
@@ -218,7 +234,19 @@ async def get_countries_with_valid_payers() -> list[dict]:
         order = {c["iso_code"]: i for i, c in enumerate(countries)}
         results.sort(key=lambda r: order[r["iso_code"]])
 
-        return results
+    # 3. Save valid regions and payer_id data into Redis
+    if results:
+        try:
+            await redis_client.set(
+                REDIS_TRANSFERKU_VALID_COUNTRIES_KEY,
+                json.dumps(results),
+                ex=settings.redis_cache_ttl,
+            )
+            print("[INFO] Saved valid Transferku regions & payers into Redis cache")
+        except Exception as e:
+            print(f"[WARN Redis set] Failed to save cache: {e}")
+
+    return results
 
 
 async def fetch_quote_transferku(
@@ -484,3 +512,48 @@ async def compare_transferku_and_lightremit(
             "bank": lightremit_result.get("bank"),
             "rate": lightremit_result.get("rate"),
         }, None
+async def get_transferku_purpose_of_remittance(
+    iso_code: str,
+    payer_id: str,
+    transaction_type: str | None = None,
+) -> tuple[list[str] | None, str | None]:
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        payers = await fetch_payers_for_country(client, iso_code)
+
+    if payers is None:
+        return None, f"Payers not found for country '{iso_code}'"
+
+    # Find the requested payer by payer_id
+    matched_payer = next(
+        (p for p in payers if str(p.get("payer_id")) == str(payer_id)),
+        None
+    )
+    if not matched_payer:
+        return None, f"Payer '{payer_id}' not found for country '{iso_code}'"
+
+    transaction_types = matched_payer.get("transaction_types", {})
+    if not transaction_types:
+        return None, f"No transaction types found for payer '{payer_id}'"
+
+    # If specific transaction_type is specified (e.g. C2C, C2B, B2C, B2B)
+    if transaction_type:
+        tx_info = transaction_types.get(transaction_type)
+        if not tx_info:
+            return None, f"Transaction type '{transaction_type}' not found for payer '{payer_id}'"
+        return tx_info.get("purpose_of_remittance_values_accepted", []), None
+
+    # If transaction_type is not specified, collect all unique purpose values across transaction types
+    purposes: list[str] = []
+    seen: set[str] = set()
+    for tx_type, tx_info in transaction_types.items():
+        if isinstance(tx_info, dict):
+            for val in tx_info.get("purpose_of_remittance_values_accepted", []):
+                if val not in seen:
+                    seen.add(val)
+                    purposes.append(val)
+
+    return purposes, None
+
+
+# Alias for backward compatibility
+get_transferku_catalogue = get_transferku_purpose_of_remittance

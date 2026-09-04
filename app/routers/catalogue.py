@@ -1,10 +1,10 @@
-from app.services.catalogueServices import best_bank_for_country, compare_transferku_and_lightremit
+from app.services.catalogueServices import best_bank_for_country, compare_transferku_and_lightremit, get_transferku_purpose_of_remittance
 from typing import Any
 from fastapi import APIRouter, HTTPException
 import httpx
 from sqlalchemy import null
 
-from app.schemas import BankItem, BankRequest, BaseResponse, CatalogueItem, CatalogueRequest, ErrorItems, ExchangeRateItem, RateItem, RateItemSuccess, RateRequest, ResponseSchema
+from app.schemas import BankItem, BankRequest, BaseResponse, CatalogueItem, CatalogueRequest, ErrorItems, ExchangeRateItem, RateItem, RateItemSuccess, RateRequest, ResponseSchema, TransferkuPurposeRequest
 from app.config import settings
 from app.utils.signature import build_request
 
@@ -187,3 +187,28 @@ async def get_rate(rate_request: RateRequest):
             return BaseResponse(status="error", message=error_message or "Data not found", data=[])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/get_transferku_purpose", response_model=BaseResponse[list[str]])
+@router.post("/get_transferku_catalogue", response_model=BaseResponse[list[str]])
+async def get_transferku_purpose(req: TransferkuPurposeRequest):
+    try:
+        purposes, error_message = await get_transferku_purpose_of_remittance(
+            iso_code=req.iso_code,
+            payer_id=req.payer_id,
+            transaction_type=req.transaction_type,
+        )
+        if purposes is not None:
+            return BaseResponse(
+                status="success",
+                message="Data fetched successfully",
+                data=purposes,
+            )
+        else:
+            return BaseResponse(
+                status="error",
+                message=error_message or "Data not found",
+                data=[],
+            )
+    except Exception as e:
+        print(f"[ERROR get_transferku_purpose] {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

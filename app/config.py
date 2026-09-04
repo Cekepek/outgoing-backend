@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     payment_client_secret_transferku: str
     payment_private_key_transferku: str
     payment_partner_id_transferku: str
+    redis_url: str = "redis://127.0.0.1:6380/0"
+    redis_cache_ttl: int = 86400
 
     class Config:
         env_file = ".env"
