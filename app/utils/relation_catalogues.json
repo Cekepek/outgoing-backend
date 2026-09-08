@@ -1,0 +1,46 @@
+{
+  "source_of_fund": [
+    { "value": "CASH", "description": "Cash" },
+    { "value": "BUSINESS", "description": "Business" },
+    { "value": "GIFT", "description": "Gift" },
+    { "value": "SALARY", "description": "Salary" },
+    { "value": "LOTTERY", "description": "Lottery" },
+    { "value": "SAVINGS", "description": "Savings" },
+    { "value": "OTHER", "description": "Others" }
+  ],
+  "relation": [
+    { "value": "AUNT", "description": "Aunt" },
+    { "value": "BROTHER", "description": "Brother" },
+    { "value": "BROTHER_IN_LAW", "description": "Brother-in-law" },
+    { "value": "COUSIN", "description": "Cousin" },
+    { "value": "DAUGHTER", "description": "Daughter" },
+    { "value": "FATHER", "description": "Father" },
+    { "value": "FATHER_IN_LAW", "description": "Father-in-law" },
+    { "value": "FRIEND", "description": "Friend" },
+    { "value": "GRAND_FATHER", "description": "Grandfather" },
+    { "value": "GRAND_MOTHER", "description": "Grandmother" },
+    { "value": "HUSBAND", "description": "Husband" },
+    { "value": "MOTHER", "description": "Mother" },
+    { "value": "MOTHER_IN_LAW", "description": "Mother-in-law" },
+    { "value": "NEPHEW", "description": "Nephew" },
+    { "value": "NIECE", "description": "Niece" },
+    { "value": "SELF", "description": "Self" },
+    { "value": "SISTER", "description": "Sister" },
+    { "value": "SISTER_IN_LAW", "description": "Sister-in-law" },
+    { "value": "SON", "description": "Son" },
+    { "value": "UNCLE", "description": "Uncle" },
+    { "value": "WIFE", "description": "Wife" },
+    { "value": "OTHER", "description": "Others" }
+  ],
+  "business_relation": [
+    { "value": "EMPLOYEE", "description": "Employee" },
+    { "value": "CUSTOMER", "description": "Customer" },
+    { "value": "VENDOR_SERVICE", "description": "Vendor Service" },
+    { "value": "PROVIDER", "description": "Provider" },
+    { "value": "BUSINESS_PARTNER", "description": "Business Partner" },
+    { "value": "INVESTOR", "description": "Investor" },
+    { "value": "THIRD_PARTY", "description": "Third Party" },
+    { "value": "AFFILIATED_ENTITY", "description": "Affiliated Entity" },
+    { "value": "AFFILIATED_BUSINESS", "description": "Affiliated Business" }
+  ]
+}
