@@ -10,22 +10,27 @@ from app.utils.redis import redis_client
 from app.config import settings
 
 
-async def fetch_bank_list(payout_country: str) -> list[dict]:
-    url = f"{settings.payment_protocol}{settings.payment_host}{settings.payment_uri}/GetAgentList"
-    signature, body = build_request("POST", url, {
-        "agentSessionId": "",
-        "paymentMode": "B",
-        "payoutCountry": payout_country,
-    })
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.post(url, json=body, headers={"Authorization": signature})
-        response.raise_for_status()
-        payload = response.json()
-
-    if payload.get("code") != "0":
-        raise HTTPException(status_code=502, detail=f"GetAgentList failed: {payload.get('message', '')}")
-
-    return payload.get("locationDetail") or []
+async def fetch_bank_list(payout_country: str, payment_mode: str = "B") -> list[dict]:
+    try:
+        url = f"{settings.payment_protocol}{settings.payment_host}{settings.payment_uri}/GetAgentList"
+        signature, body = build_request("POST", url, {
+            "agentSessionId": "",
+            "paymentMode": payment_mode,
+            "payoutCountry": payout_country,
+        })
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(url, json=body, headers={"Authorization": signature})
+            response.raise_for_status()
+            payload = response.json()
+        
+        if payload.get("code") != "0":
+            raise HTTPException(status_code=502, detail=f"GetAgentList failed: {payload.get('message', '')}")
+        
+        return payload.get("locationDetail") or []
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"GetAgentList failed: {str(e)}")
 
 async def fetch_rate(
     transfer_amount: str,
@@ -557,3 +562,108 @@ async def get_transferku_purpose_of_remittance(
 
 # Alias for backward compatibility
 get_transferku_catalogue = get_transferku_purpose_of_remittance
+
+
+def extract_transferku_locations(
+    payers: list[dict],
+    transaction_type: str | None = None,
+) -> list[dict]:
+    """
+    Extracts location details from Transferku payers.
+    If transaction_type is provided (e.g. 'C2C', 'C2B', 'B2C', 'B2B'),
+    extracts location_detail for that specific transaction type.
+    Otherwise, extracts and deduplicates location_detail across all transaction types.
+    """
+    locations: list[dict] = []
+    seen_ids: set[str] = set()
+
+    for payer in payers:
+        tx_types = payer.get("transaction_types", {})
+        if not isinstance(tx_types, dict):
+            continue
+
+        if transaction_type:
+            types_to_check = {transaction_type: tx_types.get(transaction_type)} if transaction_type in tx_types else {}
+        else:
+            types_to_check = tx_types
+
+        for tx_key, tx_val in types_to_check.items():
+            if not isinstance(tx_val, dict):
+                continue
+            for loc in tx_val.get("location_detail", []):
+                loc_id = loc.get("locationId")
+                if loc_id and loc_id not in seen_ids:
+                    seen_ids.add(loc_id)
+                    locations.append({
+                        "locationId": loc.get("locationId"),
+                        "locationName": loc.get("locationName"),
+                        "optionalField": loc.get("optionalField", ""),
+                    })
+                elif not loc_id:
+                    locations.append(loc)
+
+    return locations
+
+
+async def fetch_locations_from_both(
+    iso_code: str,
+    payment_mode: str = "B",
+    transaction_type: str | None = None,
+) -> dict:
+    """
+    Fetches locations from both Transferku and LightRemit for a given country ISO code.
+    - Transferku uses POST /v1/payers with {"iso_code": iso_code} and parses location_detail from transaction_types
+    - LightRemit uses POST GetAgentList with {"paymentMode": payment_mode, "payoutCountry": iso_code}
+
+    Returns a combined dictionary containing location lists and status/errors from both providers.
+    """
+    country_iso = iso_code.strip().upper()
+
+    async def _get_lightremit_locations():
+        try:
+            banks = await fetch_bank_list(payout_country=country_iso, payment_mode=payment_mode)
+            return {"locations": banks, "error": None}
+        except Exception as e:
+            return {"locations": [], "error": str(e)}
+
+    async def _get_transferku_locations():
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                payers = await fetch_payers_for_country(client=client, iso_code=country_iso)
+            if not payers:
+                return {"locations": [], "error": "Payers not found"}
+            extracted = extract_transferku_locations(payers, transaction_type=transaction_type)
+            return {"locations": extracted, "error": None}
+        except Exception as e:
+            return {"locations": [], "error": str(e)}
+
+    lr_result, tk_result = await asyncio.gather(
+        _get_lightremit_locations(),
+        _get_transferku_locations(),
+        return_exceptions=True,
+    )
+
+    if isinstance(lr_result, Exception):
+        lr_result = {"locations": [], "error": str(lr_result)}
+    if isinstance(tk_result, Exception):
+        tk_result = {"locations": [], "error": str(tk_result)}
+
+    return {
+        "iso_code": country_iso,
+        "lightremit": {
+            "locations": lr_result["locations"],
+            "total": len(lr_result["locations"]),
+            "error": lr_result["error"],
+        },
+        "transferku": {
+            "locations": tk_result["locations"],
+            "total": len(tk_result["locations"]),
+            "error": tk_result["error"],
+        },
+    }
+
+
+# Aliases
+fetch_locations = fetch_locations_from_both
+fetch_locations_transferku_and_lightremit = fetch_locations_from_both
+

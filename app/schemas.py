@@ -48,6 +48,13 @@ class TransferkuPurposeRequest(BaseModel):
     payer_id: str = Field(..., alias="payerId")
     transaction_type: Optional[str] = Field(default=None, alias="transactionType")
 
+class LocationRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    iso_code: str = Field(..., alias="isoCode")
+    payment_mode: Optional[str] = Field(default="B", alias="paymentMode")
+    transaction_type: Optional[str] = Field(default=None, alias="transactionType")
+
 class BankRequest(BaseModel):
     paymentMode: str = ""
     payoutCountry: str = ""

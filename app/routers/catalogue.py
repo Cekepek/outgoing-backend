@@ -1,10 +1,10 @@
-from app.services.catalogueServices import best_bank_for_country, compare_transferku_and_lightremit, get_transferku_purpose_of_remittance
+from app.services.catalogueServices import best_bank_for_country, compare_transferku_and_lightremit, fetch_locations_from_both, get_transferku_purpose_of_remittance
 from typing import Any
 from fastapi import APIRouter, HTTPException
 import httpx
 from sqlalchemy import null
 
-from app.schemas import BankItem, BankRequest, BaseResponse, CatalogueItem, CatalogueRequest, ErrorItems, ExchangeRateItem, RateItem, RateItemSuccess, RateRequest, ResponseSchema, TransferkuPurposeRequest
+from app.schemas import BankItem, BankRequest, BaseResponse, CatalogueItem, CatalogueRequest, ErrorItems, ExchangeRateItem, LocationRequest, RateItem, RateItemSuccess, RateRequest, ResponseSchema, TransferkuPurposeRequest
 from app.config import settings
 from app.utils.signature import build_request
 
@@ -211,4 +211,22 @@ async def get_transferku_purpose(req: TransferkuPurposeRequest):
             )
     except Exception as e:
         print(f"[ERROR get_transferku_purpose] {type(e).__name__}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/get_locations", response_model=BaseResponse[dict[str, Any]])
+async def get_locations(req: LocationRequest):
+    try:
+        data = await fetch_locations_from_both(
+            iso_code=req.iso_code,
+            payment_mode=req.payment_mode or "B",
+            transaction_type=req.transaction_type,
+        )
+        return BaseResponse(
+            status="success",
+            message="Locations fetched successfully",
+            data=data,
+        )
+    except Exception as e:
+        print(f"[ERROR get_locations] {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
