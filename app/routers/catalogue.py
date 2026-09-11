@@ -122,19 +122,30 @@ async def get_bank(bank_request: BankRequest):
                 headers={"Authorization": signature}
             )
             
-            status = ""
-            message = ""
-            if(response.json().get("code") == "0"):
-                status = "success"
-                message = "Data fetched successfully"
-            elif(response.json().get("code") != "0"):
-                status = "error"
-                message = f"code {response.json().get('code')} from third party with message: {response.json().get('message', '')}"
+        payload = response.json()
+        status = ""
+        message = ""
+        if payload.get("code") == "0":
+            status = "success"
+            message = "Data fetched successfully"
+        else:
+            status = "error"
+            message = f"code {payload.get('code')} from third party with message: {payload.get('message', '')}"
         
+        raw_locations = payload.get("locationDetail") or []
+        banks = [
+            {
+                "value": loc.get("locationId") or loc.get("value"),
+                "description": loc.get("locationName") or loc.get("description"),
+                "optionalField": loc.get("optionalField", ""),
+            }
+            for loc in raw_locations
+        ]
+
         return {
             "status": status,
             "message": message,
-            "data": response.json().get("locationDetail") or []
+            "data": banks
         }
     
     except Exception as e:
@@ -229,4 +240,4 @@ async def get_locations(req: LocationRequest):
     except Exception as e:
         print(f"[ERROR get_locations] {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
+

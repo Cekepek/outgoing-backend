@@ -26,7 +26,15 @@ async def fetch_bank_list(payout_country: str, payment_mode: str = "B") -> list[
         if payload.get("code") != "0":
             raise HTTPException(status_code=502, detail=f"GetAgentList failed: {payload.get('message', '')}")
         
-        return payload.get("locationDetail") or []
+        raw_locations = payload.get("locationDetail") or []
+        return [
+            {
+                "value": loc.get("locationId") or loc.get("value"),
+                "description": loc.get("locationName") or loc.get("description"),
+                "optionalField": loc.get("optionalField", ""),
+            }
+            for loc in raw_locations
+        ]
     except HTTPException:
         raise
     except Exception as e:
@@ -74,13 +82,16 @@ async def best_bank_for_country(
     payment_mode: str,
 ) -> tuple[dict | None, str | None]:
     try:
-        banks = await fetch_bank_list(payout_country)
+        banks = await fetch_bank_list(payout_country, payment_mode=payment_mode)
     except Exception as e:
         print(f"[WARN best_bank_for_country] fetch_bank_list failed: {e}")
         return None, str(e)
 
     # exclude aggregate "ALL BANKS" style entries — not a real payout bank
-    real_banks = [b for b in banks if b.get("locationId") != f"{payout_country[:3].upper()}ALL"]
+    real_banks = [
+        b for b in banks
+        if (b.get("data") or b.get("locationId")) != f"{payout_country[:3].upper()}ALL"
+    ]
     if not real_banks:
         return None, "No banks found for this country"
 
@@ -90,7 +101,7 @@ async def best_bank_for_country(
             calc_by=calc_by,
             payout_currency=payout_currency,
             payment_mode=payment_mode,
-            location_id=bank["locationId"],
+            location_id=bank.get("data") or bank.get("locationId"),
             payout_country=payout_country,
         )
         for bank in real_banks
@@ -595,8 +606,8 @@ def extract_transferku_locations(
                 if loc_id and loc_id not in seen_ids:
                     seen_ids.add(loc_id)
                     locations.append({
-                        "locationId": loc.get("locationId"),
-                        "locationName": loc.get("locationName"),
+                        "value": loc.get("locationId"),
+                        "description": loc.get("locationName"),
                         "optionalField": loc.get("optionalField", ""),
                     })
                 elif not loc_id:

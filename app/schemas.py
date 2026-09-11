@@ -60,8 +60,8 @@ class BankRequest(BaseModel):
     payoutCountry: str = ""
 
 class BankItem(BaseModel):
-    locationId: Optional[str] = None
-    locationName: Optional[str] = None
+    value: Optional[str] = None
+    description: Optional[str] = None
     optionalField: Optional[str] = None
     
 class RateRequest(BaseModel):
