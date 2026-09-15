@@ -70,6 +70,10 @@ class RateRequest(BaseModel):
     payout_currency: str = Field(..., alias="payoutCurrency")
     payment_mode: str = Field(..., alias="paymentMode")
     payout_country: str = Field(..., alias="payoutCountry")
+    location_id: Optional[str] = Field(default=None, alias="locationId")
+    location_name: Optional[str] = Field(default=None, alias="locationName")
+    transaction_type: Optional[str] = Field(default=None, alias="transactionType")
+
     class Config:
         populate_by_name = True
         json_schema_extra = {
@@ -80,6 +84,7 @@ class RateRequest(BaseModel):
                 "payoutCurrency": "SGD",
                 "paymentMode": "B",
                 "locationId": "SGPALL",
+                "locationName": "BANK OF CHINA",
                 "payoutCountry": "SGP",
             }
         }

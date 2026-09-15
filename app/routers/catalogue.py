@@ -1,4 +1,11 @@
-from app.services.catalogueServices import best_bank_for_country, compare_transferku_and_lightremit, fetch_locations_from_both, get_transferku_purpose_of_remittance
+from app.services.catalogueServices import (
+    best_bank_for_country,
+    compare_transferku_and_lightremit,
+    fetch_locations_from_both,
+    get_transferku_purpose_of_remittance,
+    select_best_rate_by_similar_location,
+    select_best_rate_by_location,
+)
 from typing import Any
 from fastapi import APIRouter, HTTPException
 import httpx
@@ -191,6 +198,30 @@ async def get_rate(rate_request: RateRequest):
             transfer_amount=rate_request.transfer_amount,
             calc_by=rate_request.calc_by,
             payment_mode=rate_request.payment_mode,
+            location_name=rate_request.location_name,
+            location_id=rate_request.location_id,
+            transaction_type=rate_request.transaction_type,
+        )
+        if result is not None:
+            return BaseResponse(status="success", message="Data fetched successfully", data=result)
+        else:
+            return BaseResponse(status="error", message=error_message or "Data not found", data=[])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/get_best_rate_by_location")
+@router.post("/get_rate_by_location")
+async def get_rate_by_location(rate_request: RateRequest):
+    try:
+        result, error_message = await select_best_rate_by_similar_location(
+            payout_country=rate_request.payout_country,
+            payout_currency=rate_request.payout_currency,
+            transfer_amount=rate_request.transfer_amount,
+            location_name=rate_request.location_name,
+            location_id=rate_request.location_id,
+            calc_by=rate_request.calc_by,
+            payment_mode=rate_request.payment_mode,
+            transaction_type=rate_request.transaction_type,
         )
         if result is not None:
             return BaseResponse(status="success", message="Data fetched successfully", data=result)

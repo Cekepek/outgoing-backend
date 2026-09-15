@@ -1,7 +1,9 @@
 import asyncio
 from datetime import datetime
+import difflib
 import json
 import random
+import re
 import string
 from fastapi import HTTPException
 import httpx
@@ -371,13 +373,420 @@ def _format_error_message(lightremit_error: str | None, transferku_error: str | 
     return "Data not found"
 
 
+def normalize_location_name(name: str | None) -> str:
+    """Normalizes location/bank name for accurate matching."""
+    if not name:
+        return ""
+    s = name.lower().strip()
+    s = re.sub(r"[^\w\s]", " ", s)
+    return " ".join(s.split())
+
+
+def calculate_location_similarity(name1: str | None, name2: str | None) -> float:
+    """
+    Calculates similarity score (0.0 to 1.0) between two location or bank names.
+    Handles variations like 'BANK OF CHINA', 'Bank of China Limited', etc.
+    """
+    n1 = normalize_location_name(name1)
+    n2 = normalize_location_name(name2)
+    if not n1 or not n2:
+        return 0.0
+    if n1 == n2:
+        return 1.0
+
+    tokens1 = set(n1.split())
+    tokens2 = set(n2.split())
+    noise_words = {
+        "bank", "ltd", "limited", "co", "the", "pt", "tbk", "inc", "corp",
+        "corporation", "berhad", "bhd", "of", "and", "national", "international"
+    }
+    filt1 = {t for t in tokens1 if t not in noise_words} or tokens1
+    filt2 = {t for t in tokens2 if t not in noise_words} or tokens2
+
+    token_sim = 0.0
+    if filt1 and filt2:
+        intersection = filt1.intersection(filt2)
+        union = filt1.union(filt2)
+        token_sim = len(intersection) / len(union)
+
+    seq_sim = difflib.SequenceMatcher(None, n1, n2).ratio()
+    score = (token_sim * 0.6) + (seq_sim * 0.4)
+
+    if filt1 == filt2:
+        score = max(score, 0.95)
+    elif filt1.issubset(filt2) or filt2.issubset(filt1):
+        subset_ratio = min(len(filt1), len(filt2)) / max(len(filt1), len(filt2))
+        score = max(score, 0.70 + 0.25 * subset_ratio)
+
+    return min(score, 1.0)
+
+
+def extract_transferku_location_candidates(
+    payers: list[dict],
+    transaction_type: str | None = None,
+) -> list[dict]:
+    """
+    Extracts all searchable location/bank candidates from Transferku payers
+    along with their associated payer_id and transaction_type.
+    """
+    candidates: list[dict] = []
+    seen: set[tuple[str, str, str]] = set()
+
+    for payer in payers:
+        pid = str(payer.get("payer_id", ""))
+        pname = payer.get("name", "")
+        tx_types = payer.get("transaction_types", {})
+        if not isinstance(tx_types, dict):
+            continue
+
+        types_to_check = (
+            {transaction_type: tx_types[transaction_type]}
+            if (transaction_type and transaction_type in tx_types)
+            else tx_types
+        )
+        has_locations = False
+        for tx_key, tx_val in types_to_check.items():
+            if not isinstance(tx_val, dict):
+                continue
+            for loc in tx_val.get("location_detail", []):
+                has_locations = True
+                loc_id = loc.get("locationId") or ""
+                loc_name = loc.get("locationName") or pname
+                key = (pid, loc_id, loc_name)
+                if key not in seen:
+                    seen.add(key)
+                    candidates.append({
+                        "payer_id": pid,
+                        "payer_name": pname,
+                        "location_id": loc_id,
+                        "location_name": loc_name,
+                        "transaction_type": tx_key,
+                        "optional_field": loc.get("optionalField", ""),
+                    })
+
+        # If no explicit location_detail list exists, use payer info as candidate
+        if not has_locations and pname:
+            key = (pid, "", pname)
+            if key not in seen:
+                seen.add(key)
+                candidates.append({
+                    "payer_id": pid,
+                    "payer_name": pname,
+                    "location_id": "",
+                    "location_name": pname,
+                    "transaction_type": transaction_type or "C2C",
+                    "optional_field": "",
+                })
+
+    return candidates
+
+
+async def find_similar_locations_in_country(
+    payout_country: str,
+    payment_mode: str = "B",
+    transaction_type: str | None = None,
+    similarity_threshold: float = 0.65,
+) -> list[dict]:
+    """
+    Finds all matched/similar locations available in both LightRemit and Transferku
+    for a given country.
+    """
+    country_iso = payout_country.strip().upper()
+
+    async def _get_lr():
+        try:
+            banks = await fetch_bank_list(country_iso, payment_mode=payment_mode)
+            return [b for b in banks if (b.get("data") or b.get("locationId") or b.get("value")) != f"{country_iso[:3].upper()}ALL"]
+        except Exception:
+            return []
+
+    async def _get_tk():
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                payers = await fetch_payers_for_country(client, country_iso)
+            return extract_transferku_location_candidates(payers or [], transaction_type=transaction_type)
+        except Exception:
+            return []
+
+    lr_banks, tk_candidates = await asyncio.gather(_get_lr(), _get_tk())
+
+    matches: list[dict] = []
+    for lr in lr_banks:
+        lr_name = lr.get("description") or lr.get("locationName") or ""
+        best_tk = None
+        best_score = 0.0
+        for tk in tk_candidates:
+            score = max(
+                calculate_location_similarity(lr_name, tk.get("location_name")),
+                calculate_location_similarity(lr_name, tk.get("payer_name")),
+            )
+            if score > best_score:
+                best_score = score
+                best_tk = tk
+
+        if best_tk and best_score >= similarity_threshold:
+            matches.append({
+                "lightremit": lr,
+                "transferku": best_tk,
+                "similarity_score": round(best_score, 3),
+                "matched_name": lr_name,
+            })
+
+    return matches
+
+
+async def select_best_rate_by_similar_location(
+    payout_country: str,
+    payout_currency: str,
+    transfer_amount: float | str,
+    location_name: str | None = None,
+    location_id: str | None = None,
+    calc_by: str = "P",
+    payment_mode: str = "B",
+    transaction_type: str | None = None,
+    similarity_threshold: float = 0.65,
+) -> tuple[dict | None, str | None]:
+    """
+    Selects the best rate between Transferku and LightRemit when matching/similar locations
+    (e.g., locationName is 'BANK OF CHINA') exist in both providers.
+
+    Compares payout amounts (for source fixed 'C') or collect amounts (for destination fixed 'P')
+    to determine the best provider for the response.
+    """
+    country_iso = payout_country.strip().upper()
+    amount_float = float(transfer_amount) if isinstance(transfer_amount, (str, int, float)) else transfer_amount
+
+    # 1. Fetch LightRemit banks and Transferku payers concurrently
+    async def _get_lr_banks():
+        try:
+            banks = await fetch_bank_list(country_iso, payment_mode=payment_mode)
+            real_banks = [
+                b for b in banks
+                if (b.get("data") or b.get("locationId") or b.get("value")) != f"{country_iso[:3].upper()}ALL"
+            ]
+            return real_banks, None
+        except Exception as e:
+            return [], str(e)
+
+    async def _get_tk_payers():
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                payers = await fetch_payers_for_country(client, country_iso)
+            if not payers:
+                return [], "Payers not found"
+            candidates = extract_transferku_location_candidates(payers, transaction_type=transaction_type)
+            return candidates, None
+        except Exception as e:
+            return [], str(e)
+
+    (lr_banks, lr_bank_err), (tk_candidates, tk_cand_err) = await asyncio.gather(
+        _get_lr_banks(),
+        _get_tk_payers(),
+    )
+
+    # 2. Match location in LightRemit
+    matched_lr_bank = None
+    if lr_banks:
+        if location_id:
+            matched_lr_bank = next(
+                (b for b in lr_banks if (b.get("value") or b.get("locationId")) == location_id),
+                None
+            )
+        if not matched_lr_bank and location_name:
+            scored_lr = [
+                (calculate_location_similarity(b.get("description") or b.get("locationName"), location_name), b)
+                for b in lr_banks
+            ]
+            scored_lr.sort(key=lambda x: x[0], reverse=True)
+            if scored_lr and scored_lr[0][0] >= similarity_threshold:
+                matched_lr_bank = scored_lr[0][1]
+
+    # 3. Match location in Transferku
+    matched_tk_cand = None
+    if tk_candidates:
+        if location_id:
+            matched_tk_cand = next(
+                (c for c in tk_candidates if c.get("location_id") == location_id),
+                None
+            )
+        if not matched_tk_cand and location_name:
+            scored_tk = [
+                (
+                    max(
+                        calculate_location_similarity(c.get("location_name"), location_name),
+                        calculate_location_similarity(c.get("payer_name"), location_name),
+                    ),
+                    c
+                )
+                for c in tk_candidates
+            ]
+            scored_tk.sort(key=lambda x: x[0], reverse=True)
+            if scored_tk and scored_tk[0][0] >= similarity_threshold:
+                matched_tk_cand = scored_tk[0][1]
+
+    # If neither specific match succeeded and no location was provided, attempt matching any similar location
+    if not matched_lr_bank and not matched_tk_cand and not location_name and not location_id:
+        if lr_banks and tk_candidates:
+            similar_pairs = await find_similar_locations_in_country(
+                payout_country=country_iso,
+                payment_mode=payment_mode,
+                transaction_type=transaction_type,
+                similarity_threshold=similarity_threshold,
+            )
+            if similar_pairs:
+                matched_lr_bank = similar_pairs[0]["lightremit"]
+                matched_tk_cand = similar_pairs[0]["transferku"]
+
+    # 4. Fetch rates concurrently for matched locations
+    async def _fetch_lr_rate():
+        if not matched_lr_bank:
+            return None, lr_bank_err or "No matching LightRemit bank found"
+        loc_id = matched_lr_bank.get("value") or matched_lr_bank.get("locationId")
+        return await fetch_rate(
+            transfer_amount=str(amount_float),
+            calc_by=calc_by,
+            payout_currency=payout_currency,
+            payment_mode=payment_mode,
+            location_id=loc_id,
+            payout_country=country_iso,
+        )
+
+    async def _fetch_tk_rate():
+        if not matched_tk_cand:
+            return None, tk_cand_err or "No matching Transferku payer found"
+        payer_id = matched_tk_cand.get("payer_id")
+        mode = "SOURCE_AMOUNT" if calc_by == "C" else "DESTINATION_AMOUNT"
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            return await fetch_quote_transferku(
+                client=client,
+                payer_id=payer_id,
+                payout_country=country_iso,
+                payout_currency=payout_currency,
+                amount=amount_float,
+                mode=mode,
+            )
+
+    (lr_rate_payload, lr_rate_err), (tk_quote_payload, tk_quote_err) = await asyncio.gather(
+        _fetch_lr_rate(),
+        _fetch_tk_rate(),
+    )
+
+    # 5. Handle cases where one or both failed
+    if lr_rate_payload is None and tk_quote_payload is None:
+        err_msg = _format_error_message(lr_rate_err or lr_bank_err, tk_quote_err or tk_cand_err)
+        return None, err_msg
+
+    # Extract amounts
+    lr_collect = 0.0
+    lr_payout = 0.0
+    if lr_rate_payload:
+        try:
+            lr_collect = float(lr_rate_payload.get("collectAmount", 0))
+        except (ValueError, TypeError):
+            pass
+        try:
+            lr_payout = float(lr_rate_payload.get("payoutAmount", 0))
+        except (ValueError, TypeError):
+            pass
+
+    tk_source, tk_dest = _extract_transferku_amounts(tk_quote_payload) if tk_quote_payload else (0.0, 0.0)
+
+    # 6. Compare rates and select winner
+    if lr_rate_payload is not None and tk_quote_payload is not None:
+        if calc_by == "C":
+            # Fixed source collect amount: choose whichever gives highest destination payout amount
+            if tk_dest > lr_payout:
+                chosen_agent = "TRANSFERKU"
+            else:
+                chosen_agent = "LIGHTREMIT"
+        else:
+            # Fixed destination payout amount (calc_by == "P"):
+            # Choose whichever requires lower IDR collect amount
+            if tk_source > 0 and lr_collect > 0:
+                if tk_source < lr_collect:
+                    chosen_agent = "TRANSFERKU"
+                else:
+                    chosen_agent = "LIGHTREMIT"
+            elif tk_source > 0:
+                chosen_agent = "TRANSFERKU"
+            else:
+                chosen_agent = "LIGHTREMIT"
+    elif tk_quote_payload is not None:
+        chosen_agent = "TRANSFERKU"
+    else:
+        chosen_agent = "LIGHTREMIT"
+
+    resolved_loc_name = (
+        location_name
+        or (matched_lr_bank.get("description") if matched_lr_bank else None)
+        or (matched_tk_cand.get("location_name") if matched_tk_cand else None)
+    )
+
+    response_data = {
+        "chosen_agent": chosen_agent,
+        "location_name": resolved_loc_name,
+        "payout_country": country_iso,
+        "payout_currency": payout_currency,
+        "transfer_amount": amount_float,
+        "calc_by": calc_by,
+        "matched_location": {
+            "lightremit": matched_lr_bank,
+            "transferku": matched_tk_cand,
+        },
+        "rate_comparison": {
+            "lightremit": {
+                "collect_amount": lr_collect,
+                "payout_amount": lr_payout,
+                "rate": lr_rate_payload,
+                "error": lr_rate_err,
+            },
+            "transferku": {
+                "collect_amount": tk_source,
+                "payout_amount": tk_dest,
+                "quote": tk_quote_payload,
+                "error": tk_quote_err,
+            },
+        },
+        # Standard fields for backwards-compatibility
+        "bank": matched_lr_bank if chosen_agent == "LIGHTREMIT" else None,
+        "rate": lr_rate_payload if chosen_agent == "LIGHTREMIT" else None,
+        "quote": tk_quote_payload if chosen_agent == "TRANSFERKU" else None,
+    }
+
+    return response_data, None
+
+
+# Aliases for similar location rate selection
+select_best_rate_by_location = select_best_rate_by_similar_location
+compare_rate_for_similar_location = select_best_rate_by_similar_location
+get_best_rate_for_location = select_best_rate_by_similar_location
+
+
 async def compare_transferku_and_lightremit(
     payout_country: str,
     payout_currency: str,
     transfer_amount: float | str,
     calc_by: str = "P",
     payment_mode: str = "B",
+    location_name: str | None = None,
+    location_id: str | None = None,
+    transaction_type: str | None = None,
+    similarity_threshold: float = 0.65,
 ) -> tuple[dict | None, str | None]:
+    # If a specific location is requested, route to location-specific rate selector
+    if location_name or location_id:
+        return await select_best_rate_by_similar_location(
+            payout_country=payout_country,
+            payout_currency=payout_currency,
+            transfer_amount=transfer_amount,
+            location_name=location_name,
+            location_id=location_id,
+            calc_by=calc_by,
+            payment_mode=payment_mode,
+            transaction_type=transaction_type,
+            similarity_threshold=similarity_threshold,
+        )
+
     amount_float = transfer_amount
 
     # 1. Concurrently fetch LightRemit best bank rate and Transferku valid countries
