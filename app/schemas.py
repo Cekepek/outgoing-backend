@@ -1,12 +1,11 @@
 from typing import Any, Generic, Literal, Optional, TypeVar, Union
-from pydantic import BaseModel, ConfigDict, Field,EmailStr, field_validator
-from pydantic.generics import GenericModel
+from pydantic import BaseModel, ConfigDict, Field, EmailStr, field_validator
 from datetime import date
 
 
 T = TypeVar("T")
 
-class ResponseSchema(GenericModel, Generic[T]):
+class ResponseSchema(BaseModel, Generic[T]):
     status: str
     message: Optional[str] = None
     data: Optional[T] = None
@@ -65,31 +64,37 @@ class BankItem(BaseModel):
     optionalField: Optional[str] = None
     
 class RateRequest(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_schema_extra={
+            "example": {
+                "transferAmount": "1000",
+                "calcBy": "P",
+                "payoutCurrency": "SGD",
+                "paymentMode": "B",
+                "payoutCountry": "SGP",
+                "locationId": "SGPALL",
+                "payerId": "648536",
+                "optionalField": "648536",
+            }
+        },
+    )
+
     transfer_amount: str = Field(..., alias="transferAmount")
-    calc_by: Literal["C", "P"] = Field(..., alias="calcBy") 
+    calc_by: Optional[Literal["C", "P"]] = Field(default="P", alias="calcBy") 
     payout_currency: str = Field(..., alias="payoutCurrency")
-    payment_mode: str = Field(..., alias="paymentMode")
+    payment_mode: Optional[str] = Field(default="B", alias="paymentMode")
     payout_country: str = Field(..., alias="payoutCountry")
     location_id: Optional[str] = Field(default=None, alias="locationId")
     location_name: Optional[str] = Field(default=None, alias="locationName")
-    transaction_type: Optional[str] = Field(default=None, alias="transactionType")
+    payer_id: Optional[str] = Field(default=None, alias="payerId")
+    optional_field: Optional[str] = Field(default=None, alias="optionalField")
+    transaction_type: Optional[str] = Field(default="C2C", alias="transactionType")
 
-    class Config:
-        populate_by_name = True
-        json_schema_extra = {
-            "example": {
-                "agentSessionId": "{{agentSessionId}}",
-                "transferAmount": "100000",
-                "calcBy": "C",
-                "payoutCurrency": "SGD",
-                "paymentMode": "B",
-                "locationId": "SGPALL",
-                "locationName": "BANK OF CHINA",
-                "payoutCountry": "SGP",
-            }
-        }
 
 class RateItemSuccess(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     collect_amount: str = Field(..., alias="collectAmount")
     collect_currency: str = Field(..., alias="collectCurrency")
     service_charge: str = Field(..., alias="serviceCharge")
@@ -103,12 +108,11 @@ class RateItemSuccess(BaseModel):
     settlement_rate: str = Field(..., alias="settlementRate")
     sla_message: str
 
-    class Config:
-        populate_by_name = True
-
 RateItem = Union[RateItemSuccess, ErrorItems]
 
 class ExchangeRateItem(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     send_country: str = Field(..., alias="sendCountry")
     send_currency: str = Field(..., alias="sendCurrency")
     send_iso2: str = Field(..., alias="sendISO2")
@@ -118,9 +122,6 @@ class ExchangeRateItem(BaseModel):
     receive_iso2: str = Field(..., alias="receiveISO2")
     exchange_rate: str = Field(..., alias="exchangeRate")
     last_modified: str = Field(..., alias="lastModified")
-
-    class Config:
-        populate_by_name = True
         
 class SendTransactionRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
