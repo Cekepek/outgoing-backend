@@ -197,6 +197,7 @@ async def get_rate(rate_request: RateRequest):
             calc_by=rate_request.calc_by or "P",
             payment_mode=rate_request.payment_mode or "B",
             location_id=rate_request.location_id,
+            location_name=rate_request.location_name,
             payer_id=rate_request.payer_id,
             optional_field=rate_request.optional_field,
             transaction_type=rate_request.transaction_type,

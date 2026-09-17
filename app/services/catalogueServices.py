@@ -454,6 +454,8 @@ def extract_transferku_location_candidates(
             if (transaction_type and transaction_type in tx_types)
             else tx_types
         )
+        if not types_to_check:
+            continue
         has_locations = False
         for tx_key, tx_val in types_to_check.items():
             if not isinstance(tx_val, dict):
@@ -942,6 +944,11 @@ async def find_similar_locations_in_country(
 #             "quote": transferku_quote,
 #         }, None
 #     else:
+def _format_error_message(lr_err: str | None = None, tk_err: str | None = None) -> str:
+    errs = [str(e).strip() for e in [lr_err, tk_err] if e and str(e).strip()]
+    return " | ".join(errs) if errs else "Rate not available"
+
+
 async def get_direct_rate(
     payout_country: str,
     payout_currency: str,
@@ -949,15 +956,18 @@ async def get_direct_rate(
     calc_by: str = "P",
     payment_mode: str = "B",
     location_id: str | None = None,
+    location_name: str | None = None,
     payer_id: str | None = None,
     optional_field: str | None = None,
     transaction_type: str | None = "C2C",
 ) -> tuple[dict | None, str | None]:
     """
-    Unified rate calculation service (Version A).
-    - If payer_id / optional_field is provided, calls Transferku /v1/quotes directly.
-    - If not provided, calls LightRemit /GetEXRate using location_id directly.
-    Returns normalized rate data and raw provider payloads for backward compatibility.
+    Unified rate calculation and provider selection service.
+    - Queries quotes from both Transferku and LightRemit when applicable.
+    - Compares:
+        - If calc_by == "C" (Source amount fixed): picks the provider offering higher payout amount.
+        - If calc_by == "P" (Destination amount fixed): picks the provider requiring lower total pay (sent_amount vs collectAmount).
+    - Falls back to whichever provider successfully returned a rate if only one is available.
     """
     country_iso = payout_country.strip().upper()
     effective_payer_id = (payer_id or optional_field or "").strip()
@@ -971,75 +981,156 @@ async def get_direct_rate(
         except (ValueError, TypeError):
             return default
 
-    # 1. Transferku route
-    if effective_payer_id:
+    # 1. Attempt to resolve Transferku payer_id if not explicitly provided
+    if not effective_payer_id:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                tk_payers = await fetch_payers_for_country(client=client, iso_code=country_iso)
+            if tk_payers:
+                valid_payers = [p for p in tk_payers if payer_has_valid_transaction_type(p)]
+                tk_cands = extract_transferku_locations(valid_payers, transaction_type=transaction_type)
+                for cand in tk_cands:
+                    if location_id and str(cand.get("value")) == str(location_id):
+                        effective_payer_id = str(cand.get("optionalField") or cand.get("value") or "").strip()
+                        break
+                    if location_name and calculate_location_similarity(cand.get("description") or "", location_name) >= 0.65:
+                        effective_payer_id = str(cand.get("optionalField") or cand.get("value") or "").strip()
+                        break
+        except Exception as e:
+            print(f"[WARN get_direct_rate payer lookup] {e}")
+
+    # 2. Determine LightRemit locationId
+    eff_loc_id = location_id or f"{country_iso[:3].upper()}ALL"
+    if location_id and effective_payer_id and str(location_id) == str(effective_payer_id) and location_id.isdigit():
+        eff_loc_id = f"{country_iso[:3].upper()}ALL"
+
+    # 3. Concurrent fetching functions
+    async def _fetch_tk():
+        if not effective_payer_id:
+            return None, "Transferku payer not found"
         mode = "SOURCE_AMOUNT" if calc_by == "C" else "DESTINATION_AMOUNT"
         try:
             amount_val = float(transfer_amount)
         except (ValueError, TypeError):
             amount_val = transfer_amount
 
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            quote, err = await fetch_quote_transferku(
-                client=client,
-                payer_id=effective_payer_id,
-                payout_country=country_iso,
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                return await fetch_quote_transferku(
+                    client=client,
+                    payer_id=effective_payer_id,
+                    payout_country=country_iso,
+                    payout_currency=payout_currency,
+                    amount=amount_val,
+                    mode=mode,
+                    transaction_type=transaction_type or "C2C",
+                )
+        except Exception as e:
+            return None, str(e)
+
+    async def _fetch_lr():
+        try:
+            return await fetch_rate(
+                transfer_amount=str_amount,
+                calc_by=calc_by,
                 payout_currency=payout_currency,
-                amount=amount_val,
-                mode=mode,
-                transaction_type=transaction_type or "C2C",
+                payment_mode=payment_mode,
+                location_id=eff_loc_id,
+                payout_country=country_iso,
             )
+        except Exception as e:
+            return None, str(e)
 
-        if not quote:
-            return None, err or "Failed to fetch Transferku quote"
+    # 4. Fetch quotes concurrently
+    (tk_quote, tk_err), (lr_rate, lr_err) = await asyncio.gather(
+        _fetch_tk(),
+        _fetch_lr(),
+    )
 
-        source_amt = quote.get("source", {}).get("amount") or 0.0
-        dest_amt = quote.get("destination", {}).get("amount") or 0.0
-        sent_amt = quote.get("sent_amount", {}).get("amount") or source_amt
-        fee_amt = quote.get("fee", {}).get("amount") or 0.0
-        rate_val = quote.get("inverse_fx_rate") or quote.get("wholesale_fx_rate") or 0.0
+    if tk_quote is None and lr_rate is None:
+        return None, _format_error_message(lr_err, tk_err)
 
+    # 5. Extract amounts for comparison
+    tk_source = 0.0
+    tk_dest = 0.0
+    tk_sent = 0.0
+    tk_fee = 0.0
+    tk_rate_val = 0.0
+
+    if tk_quote:
+        tk_source = _to_float(tk_quote.get("source", {}).get("amount"))
+        tk_dest = _to_float(tk_quote.get("destination", {}).get("amount"))
+        tk_sent = _to_float(tk_quote.get("sent_amount", {}).get("amount") or tk_source)
+        tk_fee = _to_float(tk_quote.get("fee", {}).get("amount"))
+        tk_rate_val = _to_float(tk_quote.get("inverse_fx_rate") or tk_quote.get("wholesale_fx_rate"))
+
+    lr_exchange = 0.0
+    lr_fee = 0.0
+    lr_collect = 0.0
+    lr_nominal = 0.0
+    lr_payout = 0.0
+
+    if lr_rate:
+        lr_rate.pop("agentSessionId", None)
+        lr_exchange = _to_float(lr_rate.get("exchangeRate"))
+        lr_fee = _to_float(lr_rate.get("serviceCharge"))
+        lr_collect = _to_float(lr_rate.get("collectAmount"))
+        lr_nominal = _to_float(lr_rate.get("transferAmount"))
+        lr_payout = _to_float(lr_rate.get("payoutAmount"))
+
+    # 6. Compare and select provider
+    if tk_quote is not None and lr_rate is not None:
+        if calc_by == "C":
+            # Fixed source amount: choose higher destination payout amount
+            if tk_dest > lr_payout:
+                chosen_agent = "TRANSFERKU"
+            else:
+                chosen_agent = "LIGHTREMIT"
+        else:
+            # Fixed destination amount (calc_by == "P"): choose lower total pay / collect amount
+            if tk_sent > 0 and lr_collect > 0:
+                if tk_sent < lr_collect:
+                    chosen_agent = "TRANSFERKU"
+                else:
+                    chosen_agent = "LIGHTREMIT"
+            elif tk_sent > 0:
+                chosen_agent = "TRANSFERKU"
+            else:
+                chosen_agent = "LIGHTREMIT"
+    elif tk_quote is not None:
+        chosen_agent = "TRANSFERKU"
+    else:
+        chosen_agent = "LIGHTREMIT"
+
+    # 7. Format winner response
+    if chosen_agent == "TRANSFERKU":
         return {
             "chosen_agent": "TRANSFERKU",
             "provider": "TRANSFERKU",
-            "exchange_rate": _to_float(rate_val),
-            "admin_fee": _to_float(fee_amt),
-            "total_pay": _to_float(sent_amt),
-            "nominal_dikirim": _to_float(source_amt),
-            "payout_amount": _to_float(dest_amt),
-            "payout_currency": quote.get("destination", {}).get("currency") or payout_currency,
-            "quote": quote,
+            "exchange_rate": tk_rate_val,
+            "admin_fee": tk_fee,
+            "total_pay": tk_sent,
+            "nominal_dikirim": tk_source,
+            "payout_amount": tk_dest,
+            "payout_currency": tk_quote.get("destination", {}).get("currency") or payout_currency,
+            "quote": tk_quote,
         }, None
-
-    # 2. LightRemit route
-    eff_loc_id = location_id or f"{country_iso[:3].upper()}ALL"
-    rate_payload, err = await fetch_rate(
-        transfer_amount=str_amount,
-        calc_by=calc_by,
-        payout_currency=payout_currency,
-        payment_mode=payment_mode,
-        location_id=eff_loc_id,
-        payout_country=country_iso,
-    )
-
-    if not rate_payload:
-        return None, _format_error_message(err)
-
-    return {
-        "chosen_agent": "LIGHTREMIT",
-        "provider": "LIGHTREMIT",
-        "exchange_rate": _to_float(rate_payload.get("exchangeRate")),
-        "admin_fee": _to_float(rate_payload.get("serviceCharge")),
-        "total_pay": _to_float(rate_payload.get("collectAmount")),
-        "nominal_dikirim": _to_float(rate_payload.get("transferAmount")),
-        "payout_amount": _to_float(rate_payload.get("payoutAmount")),
-        "payout_currency": rate_payload.get("payoutCurrency") or payout_currency,
-        "rate": rate_payload,
-        "bank": {
-            "locationId": eff_loc_id,
-            "message": rate_payload.get("message", ""),
-        },
-    }, None
+    else:
+        return {
+            "chosen_agent": "LIGHTREMIT",
+            "provider": "LIGHTREMIT",
+            "exchange_rate": lr_exchange,
+            "admin_fee": lr_fee,
+            "total_pay": lr_collect,
+            "nominal_dikirim": lr_nominal,
+            "payout_amount": lr_payout,
+            "payout_currency": lr_rate.get("payoutCurrency") or payout_currency,
+            "rate": lr_rate,
+            "bank": {
+                "locationId": eff_loc_id,
+                "message": lr_rate.get("message", ""),
+            },
+        }, None
 
 
 # Aliases
@@ -1118,6 +1209,9 @@ def extract_transferku_locations(
         else:
             types_to_check = tx_types
 
+        if not types_to_check:
+            continue
+
         has_locations = False
         for tx_key, tx_val in types_to_check.items():
             if not isinstance(tx_val, dict):
@@ -1144,14 +1238,16 @@ def extract_transferku_locations(
                         })
 
         if not has_locations and payer.get("name"):
-            pid = payer_id or str(payer.get("name"))
-            if pid not in seen_ids:
-                seen_ids.add(pid)
-                locations.append({
-                    "value": payer_id,
-                    "description": payer.get("name", ""),
-                    "optionalField": payer_id,
-                })
+            payer_name = str(payer.get("name") or "").strip()
+            if payer_name.lower() not in {"bank transfer", "bank account", "wire transfer", "all banks"}:
+                pid = payer_id or payer_name
+                if pid not in seen_ids:
+                    seen_ids.add(pid)
+                    locations.append({
+                        "value": payer_id,
+                        "description": payer_name,
+                        "optionalField": payer_id,
+                    })
 
     return locations
 
@@ -1186,7 +1282,8 @@ async def fetch_locations_from_both(
                 payers = await fetch_payers_for_country(client=client, iso_code=country_iso)
             if not payers:
                 return {"locations": [], "error": "Payers not found"}
-            extracted = extract_transferku_locations(payers, transaction_type=transaction_type)
+            valid_payers = [p for p in payers if payer_has_valid_transaction_type(p)]
+            extracted = extract_transferku_locations(valid_payers, transaction_type=transaction_type)
             return {"locations": extracted, "error": None}
         except Exception as e:
             return {"locations": [], "error": str(e)}
@@ -1218,6 +1315,8 @@ async def fetch_locations_from_both(
                     lr_desc = lr_loc.get("description") or ""
                     if calculate_location_similarity(lr_desc, tk_desc) >= similarity_threshold:
                         is_duplicate = True
+                        if not lr_loc.get("optionalField"):
+                            lr_loc["optionalField"] = tk_loc.get("optionalField") or str(tk_loc.get("value") or "")
                         break
 
             if not is_duplicate:
