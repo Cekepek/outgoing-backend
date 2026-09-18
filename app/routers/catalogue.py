@@ -2,14 +2,34 @@ from app.services.catalogueServices import (
     best_bank_for_country,
     fetch_locations_from_both,
     get_direct_rate,
+    get_transferku_business_relation,
     get_transferku_purpose_of_remittance,
+    get_transferku_relation,
+    get_transferku_source_of_fund,
 )
-from typing import Any
-from fastapi import APIRouter, HTTPException
+from typing import Any, Optional
+from fastapi import APIRouter, HTTPException, Body
 import httpx
 from sqlalchemy import null
 
-from app.schemas import BankItem, BankRequest, BaseResponse, CatalogueItem, CatalogueRequest, ErrorItems, ExchangeRateItem, LocationRequest, RateItem, RateItemSuccess, RateRequest, ResponseSchema, TransferkuPurposeRequest
+from app.schemas import (
+    BankItem,
+    BankRequest,
+    BaseResponse,
+    CatalogueItem,
+    CatalogueRequest,
+    ErrorItems,
+    ExchangeRateItem,
+    LocationRequest,
+    RateItem,
+    RateItemSuccess,
+    RateRequest,
+    ResponseSchema,
+    TransferkuCatalogueItem,
+    TransferkuPurposeRequest,
+    TransferkuRelationRequest,
+    TransferkuSourceOfFundRequest,
+)
 from app.config import settings
 from app.utils.signature import build_request
 
@@ -218,8 +238,8 @@ async def get_rate(rate_request: RateRequest):
         print(f"[ERROR get_rate] {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/get_transferku_purpose", response_model=BaseResponse[list[str]])
-@router.post("/get_transferku_catalogue", response_model=BaseResponse[list[str]])
+@router.post("/get_transferku_purpose", response_model=BaseResponse[list[dict[str, str]]])
+@router.post("/get_transferku_catalogue", response_model=BaseResponse[list[dict[str, str]]])
 async def get_transferku_purpose(req: TransferkuPurposeRequest):
     try:
         purposes, error_message = await get_transferku_purpose_of_remittance(
@@ -258,5 +278,84 @@ async def get_locations(req: LocationRequest):
         )
     except Exception as e:
         print(f"[ERROR get_locations] {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# @router.post("/get_transferku_relation", response_model=BaseResponse[list[dict[str, str]]])
+# @router.post("/get_transferku_relations", response_model=BaseResponse[list[dict[str, str]]])
+# async def get_transferku_relation_post(
+#     req: Optional[TransferkuRelationRequest] = Body(default=None),
+# ):
+#     try:
+#         tx_type = req.transaction_type if req else None
+#         rel_type = req.relation_type if req else None
+#         data = get_transferku_relation(transaction_type=tx_type, relation_type=rel_type)
+#         return BaseResponse(
+#             status="success",
+#             message="Data fetched successfully",
+#             data=data,
+#         )
+#     except Exception as e:
+#         print(f"[ERROR get_transferku_relation] {type(e).__name__}: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/get_transferku_relation", response_model=BaseResponse[list[dict[str, str]]])
+@router.get("/get_transferku_relations", response_model=BaseResponse[list[dict[str, str]]])
+async def get_transferku_relation_get(
+    transaction_type: Optional[str] = None,
+    relation_type: Optional[str] = None,
+):
+    try:
+        data = get_transferku_relation(transaction_type=transaction_type, relation_type=relation_type)
+        return BaseResponse(
+            status="success",
+            message="Data fetched successfully",
+            data=data,
+        )
+    except Exception as e:
+        print(f"[ERROR get_transferku_relation] {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# @router.post("/get_transferku_business_relation", response_model=BaseResponse[list[dict[str, str]]])
+# @router.get("/get_transferku_business_relation", response_model=BaseResponse[list[dict[str, str]]])
+# async def get_transferku_business_relation_endpoint():
+#     try:
+#         data = get_transferku_business_relation()
+#         return BaseResponse(
+#             status="success",
+#             message="Data fetched successfully",
+#             data=data,
+#         )
+#     except Exception as e:
+#         print(f"[ERROR get_transferku_business_relation] {type(e).__name__}: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/get_transferku_source_of_fund", response_model=BaseResponse[list[dict[str, str]]])
+@router.post("/get_transferku_source_of_funds", response_model=BaseResponse[list[dict[str, str]]])
+async def get_transferku_source_of_fund_post(
+    req: Optional[TransferkuSourceOfFundRequest] = Body(default=None),
+):
+    try:
+        data = get_transferku_source_of_fund()
+        return BaseResponse(
+            status="success",
+            message="Data fetched successfully",
+            data=data,
+        )
+    except Exception as e:
+        print(f"[ERROR get_transferku_source_of_fund] {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/get_transferku_source_of_fund", response_model=BaseResponse[list[dict[str, str]]])
+@router.get("/get_transferku_source_of_funds", response_model=BaseResponse[list[dict[str, str]]])
+async def get_transferku_source_of_fund_get():
+    try:
+        data = get_transferku_source_of_fund()
+        return BaseResponse(
+            status="success",
+            message="Data fetched successfully",
+            data=data,
+        )
+    except Exception as e:
+        print(f"[ERROR get_transferku_source_of_fund] {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

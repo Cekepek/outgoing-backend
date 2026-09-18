@@ -47,6 +47,25 @@ class TransferkuPurposeRequest(BaseModel):
     payer_id: str = Field(..., alias="payerId")
     transaction_type: Optional[str] = Field(default=None, alias="transactionType")
 
+class TransferkuCatalogueItem(BaseModel):
+    value: str
+    label: str
+    description: str
+
+class TransferkuRelationRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    iso_code: Optional[str] = Field(default=None, alias="isoCode")
+    payer_id: Optional[str] = Field(default=None, alias="payerId")
+    transaction_type: Optional[str] = Field(default=None, alias="transactionType")
+    relation_type: Optional[str] = Field(default=None, alias="relationType")
+
+class TransferkuSourceOfFundRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    iso_code: Optional[str] = Field(default=None, alias="isoCode")
+    payer_id: Optional[str] = Field(default=None, alias="payerId")
+
 class LocationRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

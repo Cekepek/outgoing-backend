@@ -1,4 +1,18 @@
 {
+  "purpose_of_remittance": [
+    { "value": "FAMILY_SUPPORT", "description": "Family Support" },
+    { "value": "SALARY_PAYMENT", "description": "Salary Payment" },
+    { "value": "EDUCATION", "description": "Education" },
+    { "value": "MEDICAL_TREATMENT", "description": "Medical Treatment" },
+    { "value": "GIFT", "description": "Gift" },
+    { "value": "TRAVEL", "description": "Travel" },
+    { "value": "BUSINESS_PAYMENT", "description": "Business Payment" },
+    { "value": "INVESTMENT", "description": "Investment" },
+    { "value": "SAVINGS", "description": "Savings" },
+    { "value": "LOAN_REPAYMENT", "description": "Loan Repayment" },
+    { "value": "DONATION", "description": "Donation" },
+    { "value": "OTHER", "description": "Others" }
+  ],
   "source_of_fund": [
     { "value": "CASH", "description": "Cash" },
     { "value": "BUSINESS", "description": "Business" },

@@ -1137,11 +1137,43 @@ async def get_direct_rate(
 get_rate = get_direct_rate
 
 
+# ---------------------------------------------------------------------------
+# relation_catalogues.json — loaded once at import time
+# ---------------------------------------------------------------------------
+import json as _json
+import pathlib as _pathlib
+
+_CATALOGUES_PATH = _pathlib.Path(__file__).parent.parent / "utils" / "relation_catalogues.json"
+_RELATION_CATALOGUES: dict = {}
+try:
+    with open(_CATALOGUES_PATH, "r", encoding="utf-8") as _f:
+        _RELATION_CATALOGUES = _json.load(_f)
+except Exception as _e:
+    print(f"[WARN] Could not load relation_catalogues.json: {_e}")
+
+# Build a fast lookup dict:  { section: { value: description } }
+_PURPOSE_LOOKUP: dict[str, str] = {
+    item["value"]: item["description"]
+    for item in _RELATION_CATALOGUES.get("purpose_of_remittance", [])
+}
+
+
+def _purpose_label(value: str) -> str:
+    """Return a human-readable label for a purpose-of-remittance code.
+
+    Falls back to title-casing the raw value (e.g. 'NEW_CODE' → 'New Code')
+    when the code is not present in relation_catalogues.json.
+    """
+    if value in _PURPOSE_LOOKUP:
+        return _PURPOSE_LOOKUP[value]
+    return value.replace("_", " ").title()
+
+
 async def get_transferku_purpose_of_remittance(
     iso_code: str,
     payer_id: str,
     transaction_type: str | None = None,
-) -> tuple[list[str] | None, str | None]:
+) -> tuple[list[dict[str, str]] | None, str | None]:
     async with httpx.AsyncClient(timeout=15.0) as client:
         payers = await fetch_payers_for_country(client, iso_code)
 
@@ -1160,28 +1192,108 @@ async def get_transferku_purpose_of_remittance(
     if not transaction_types:
         return None, f"No transaction types found for payer '{payer_id}'"
 
+    def _to_items(raw_values: list[str]) -> list[dict[str, str]]:
+        return [
+            {
+                "value": v,
+                "label": _purpose_label(v),
+                "description": _purpose_label(v),
+            }
+            for v in raw_values
+        ]
+
     # If specific transaction_type is specified (e.g. C2C, C2B, B2C, B2B)
     if transaction_type:
         tx_info = transaction_types.get(transaction_type)
         if not tx_info:
             return None, f"Transaction type '{transaction_type}' not found for payer '{payer_id}'"
-        return tx_info.get("purpose_of_remittance_values_accepted", []), None
+        return _to_items(tx_info.get("purpose_of_remittance_values_accepted", [])), None
 
     # If transaction_type is not specified, collect all unique purpose values across transaction types
-    purposes: list[str] = []
+    raw_purposes: list[str] = []
     seen: set[str] = set()
     for tx_type, tx_info in transaction_types.items():
         if isinstance(tx_info, dict):
             for val in tx_info.get("purpose_of_remittance_values_accepted", []):
                 if val not in seen:
                     seen.add(val)
-                    purposes.append(val)
+                    raw_purposes.append(val)
 
-    return purposes, None
+    return _to_items(raw_purposes), None
 
 
 # Alias for backward compatibility
 get_transferku_catalogue = get_transferku_purpose_of_remittance
+
+
+def get_transferku_source_of_fund() -> list[dict[str, str]]:
+    """Return Transferku source of fund catalogue mapped with value, label, and description."""
+    raw_list = _RELATION_CATALOGUES.get("source_of_fund", [])
+    return [
+        {
+            "value": item["value"],
+            "label": item["description"],
+            "description": item["description"],
+        }
+        for item in raw_list
+        if isinstance(item, dict) and "value" in item and "description" in item
+    ]
+
+
+def get_transferku_relation(
+    transaction_type: str | None = None,
+    relation_type: str | None = None,
+) -> list[dict[str, str]]:
+    """Return Transferku relation catalogue mapped with value, label, and description.
+
+    - If relation_type is 'all', returns combined personal and business relations.
+    - If transaction_type is a business type (B2B, B2C, C2B, BUSINESS) or relation_type is 'business',
+      returns business_relation.
+    - Otherwise returns personal relation.
+    """
+    if relation_type and relation_type.lower() == "all":
+        raw_list = _RELATION_CATALOGUES.get("relation", []) + _RELATION_CATALOGUES.get("business_relation", [])
+        return [
+            {
+                "value": item["value"],
+                "label": item["description"],
+                "description": item["description"],
+            }
+            for item in raw_list
+            if isinstance(item, dict) and "value" in item and "description" in item
+        ]
+
+    is_business = False
+    if transaction_type and transaction_type.upper() in ("B2B", "B2C", "C2B", "BUSINESS"):
+        is_business = True
+    elif relation_type and relation_type.lower() in ("business", "business_relation"):
+        is_business = True
+
+    key = "business_relation" if is_business else "relation"
+    raw_list = _RELATION_CATALOGUES.get(key, [])
+    return [
+        {
+            "value": item["value"],
+            "label": item["description"],
+            "description": item["description"],
+        }
+        for item in raw_list
+        if isinstance(item, dict) and "value" in item and "description" in item
+    ]
+
+
+def get_transferku_business_relation() -> list[dict[str, str]]:
+    """Return Transferku business relation catalogue mapped with value, label, and description."""
+    raw_list = _RELATION_CATALOGUES.get("business_relation", [])
+    return [
+        {
+            "value": item["value"],
+            "label": item["description"],
+            "description": item["description"],
+        }
+        for item in raw_list
+        if isinstance(item, dict) and "value" in item and "description" in item
+    ]
 
 
 def extract_transferku_locations(
