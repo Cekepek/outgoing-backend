@@ -11,6 +11,49 @@ from app.utils.signature import build_request
 from app.utils.redis import redis_client
 from app.config import settings
 
+COUNTRY_NAMES = {
+    "AUS": "Australia",
+    "CHN": "China",
+    "EUR": "Eropa",
+    "GBR": "Inggris",
+    "HKG": "Hong Kong",
+    "MYS": "Malaysia",
+    "PHL": "Filipina",
+    "SGP": "Singapura",
+    "THA": "Thailand",
+}
+CURRENCY_NAME = {
+    "AUS": "AUD",
+    "CHN": "CNY",
+    "EUR": "EUR",
+    "GBR": "GBP",
+    "HKG": "HKD",
+    "MYS": "MYR",
+    "PHL": "PHP",
+    "SGP": "SGD",
+    "THA": "THB",
+}
+def enrich_catalogue(catalogue_type: str, raw_result: list[dict]) -> list[dict]:
+    if catalogue_type == "CTY":
+        return [
+            {
+                "value": item["data"],
+                "description": COUNTRY_NAMES.get(item["value"], item["value"]),
+                "optionalField": CURRENCY_NAME.get(item["value"], item["value"]),
+            }
+            for item in raw_result
+        ]
+    else:
+        return[
+            {
+                "value": item["data"],
+                "description": item["value"],
+                "optionalField": item.get("optionalField", ""),
+            }
+            for item in raw_result
+        ]
+    # Unknown/unmapped catalogueType — pass through raw, don't crash
+    return raw_result
 
 async def fetch_bank_list(payout_country: str, payment_mode: str = "B") -> list[dict]:
     try:

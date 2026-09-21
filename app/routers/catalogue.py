@@ -1,3 +1,4 @@
+from app.services.catalogueServices import enrich_catalogue
 from app.services.catalogueServices import (
     best_bank_for_country,
     fetch_locations_from_both,
@@ -34,67 +35,7 @@ from app.config import settings
 from app.utils.signature import build_request
 
 router = APIRouter()
-COUNTRY_NAMES = {
-    "AUS": "Australia",
-    "CHN": "China",
-    "EUR": "Eropa",
-    "GBR": "Inggris",
-    "HKG": "Hong Kong",
-    "MYS": "Malaysia",
-    "PHL": "Filipina",
-    "SGP": "Singapura",
-    "THA": "Thailand",
-}
-CURRENCY_NAME = {
-    "AUS": "AUD",
-    "CHN": "CNY",
-    "EUR": "EUR",
-    "GBR": "GBP",
-    "HKG": "HKD",
-    "MYS": "MYR",
-    "PHL": "PHP",
-    "SGP": "SGD",
-    "THA": "THB",
-}
-BANK_NAME = {
-    "AUS": "AUSALL",
-    "CHN": "CHNBAN",
-    "EUR": "EURALL01",
-    "GBR": "GBRALL",
-    "HKG": "HKGABN",
-    "MYS": "MYSAFF",
-    "PHL": "PHLALLBA",
-    "SGP": "SGPALL",
-    "THA": "THABAN01",
-}
 
-def _best_bank_for(country_code: str) -> str | None:
-    banks = BANK_NAME.get(country_code)  # e.g. list of candidate banks for this country
-    if not banks:
-        return None
-
-    rates = {
-        bank: get_exchange_rate(bank, country_code)
-        for bank in banks
-    }
-    # pick bank with the best (e.g. highest) rate — adjust comparison to your business logic
-    return max(rates, key=rates.get)
-
-def enrich_catalogue(catalogue_type: str, raw_result: list[dict]) -> list[dict]:
-    if catalogue_type == "CTY":
-        return [
-            {
-                "data": item["data"],
-                "value": item["value"],
-                "label": COUNTRY_NAMES.get(item["value"], item["value"]),
-                "currency": CURRENCY_NAME.get(item["value"], item["value"]),
-                "bank": BANK_NAME.get(item["value"], item["value"]),
-            }
-            for item in raw_result
-        ]
-
-    # Unknown/unmapped catalogueType — pass through raw, don't crash
-    return raw_result
 @router.post("/get_catalogue", response_model=ResponseSchema[list[dict[str, Any]]])
 async def get_catalogue(catalogue_request: CatalogueRequest):
     try:
