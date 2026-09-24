@@ -144,6 +144,13 @@ class ExchangeRateItem(BaseModel):
         
 class SendTransactionRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    agent: Optional[str] = Field(default="LIGHTREMIT", alias="agent")
+    quote_id: Optional[str] = Field(default=None, alias="quoteId")
+    quote: Optional[Union[dict[str, Any], str]] = Field(default=None, alias="quote")
+    location_name: Optional[str] = Field(default="", alias="locationName")
+    callback_url: Optional[str] = Field(default=None, alias="callbackUrl")
+    additional_info: Optional[dict[str, Any]] = Field(default_factory=dict, alias="additionalInfo")
+
     agent_session_id: Optional[str] = None
     agent_txn_id: Optional[str] = None
     location_id: str = Field(alias="locationId")
@@ -230,7 +237,7 @@ class SendTransactionResponseSuccess(BaseModel):
     send_commission: str = Field(alias="sendCommission")     # monetary -> str
     settlement_amount: str = Field(alias="settlementAmount") # monetary -> str
 
-SendTransactionResponse = Union[SendTransactionResponseSuccess, ErrorItems]
+SendTransactionResponse = Union[SendTransactionResponseSuccess, ErrorItems, dict[str, Any]]
 
 class LoginSchema(BaseModel):
     username: str
@@ -397,5 +404,41 @@ class LightRemitSendTransactionPayload(BaseModel):
     representative_contact_number: Optional[str] = Field(default="", alias="RepresentativeContactNumber")
 
     dynamic_fields: list[Any] = Field(default_factory=list, alias="dynamicFields")
-    # --- Receiver / Representative / dynamicFields unchanged from before ---
-    # ...
+
+
+class TransferkuCustomerRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    external_id: Optional[str] = None
+    role: str = "SENDER"
+    customer_type: str = "PERSONAL"
+    firstname: str
+    lastname: str
+    gender: str
+    date_of_birth: str
+    nationality_country_iso_code: str
+    country_of_birth_iso_code: str
+    id_type: str
+    id_number: str
+    id_country_iso_code: str
+    id_delivery_date: str
+    id_expiration_date: str
+    country_iso_code: str
+    address: str
+    city: str
+    district: Optional[str] = None
+    province_state: str
+    postal_code: str
+    msisdn: str
+    occupation: str
+    source_of_funds: str = "SALARY"
+
+
+class TransferkuCustomerResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    customer_id: str
+    external_id: str
+    role: str
+    customer_type: str
+    created_at: str
