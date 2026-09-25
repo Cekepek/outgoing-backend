@@ -434,6 +434,26 @@ class TransferkuCustomerRequest(BaseModel):
     source_of_funds: str = "SALARY"
 
 
+class TransferkuBusinessCustomerRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    external_id: Optional[str] = None
+    role: str = "BENEFICIARY"
+    customer_type: str = "BUSINESS"
+    registered_name: str
+    trading_name: str
+    registration_number: str
+    country_iso_code: str
+    address: str
+    city: str
+    postal_code: str
+    msisdn: str
+    email: str
+    representative_firstname: str
+    representative_lastname: str
+    business_relationship: str = "BUSINESS_PARTNER"
+
+
 class TransferkuCustomerResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
