@@ -794,13 +794,6 @@ async def send_transferku_transaction(
     """
     # 1. Resolve quote_id
     quote_id = req.quote_id
-    if not quote_id and req.quote:
-        if isinstance(req.quote, dict):
-            quote_id = req.quote.get("quote_id") or req.quote.get("id")
-        elif isinstance(req.quote, str):
-            quote_id = req.quote
-    if not quote_id:
-        quote_id = kwargs.get("quote_id")
     if not quote_id:
         raise HTTPException(
             status_code=400,

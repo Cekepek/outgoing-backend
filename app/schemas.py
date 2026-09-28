@@ -146,7 +146,6 @@ class SendTransactionRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     agent: Optional[str] = Field(default="LIGHTREMIT", alias="agent")
     quote_id: Optional[str] = Field(default=None, alias="quoteId")
-    quote: Optional[Union[dict[str, Any], str]] = Field(default=None, alias="quote")
     location_name: Optional[str] = Field(default="", alias="locationName")
     callback_url: Optional[str] = Field(default=None, alias="callbackUrl")
     additional_info: Optional[dict[str, Any]] = Field(default_factory=dict, alias="additionalInfo")
@@ -461,4 +460,4 @@ class TransferkuCustomerResponse(BaseModel):
     external_id: str
     role: str
     customer_type: str
-    created_at: str
+    created_at: str

@@ -1024,23 +1024,59 @@ async def get_direct_rate(
         except (ValueError, TypeError):
             return default
 
-    # 1. Attempt to resolve Transferku payer_id if not explicitly provided
-    if not effective_payer_id:
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                tk_payers = await fetch_payers_for_country(client=client, iso_code=country_iso)
-            if tk_payers:
-                valid_payers = [p for p in tk_payers if payer_has_valid_transaction_type(p)]
-                tk_cands = extract_transferku_locations(valid_payers, transaction_type=transaction_type)
+    # 1. Attempt to resolve Transferku payer_id and location details for the given transaction_type
+    tk_location_id: str | None = None
+    tk_location_name: str | None = None
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            tk_payers = await fetch_payers_for_country(client=client, iso_code=country_iso)
+        if tk_payers:
+            valid_payers = [p for p in tk_payers if payer_has_valid_transaction_type(p)]
+            tk_cands = extract_transferku_locations(valid_payers, transaction_type=transaction_type)
+
+            matched_cand = None
+            # 1. Exact match on value/location_id
+            if location_id:
                 for cand in tk_cands:
-                    if location_id and str(cand.get("value")) == str(location_id):
-                        effective_payer_id = str(cand.get("optionalField") or cand.get("value") or "").strip()
+                    if str(cand.get("value") or "").upper() == str(location_id).upper():
+                        matched_cand = cand
                         break
-                    if location_name and calculate_location_similarity(cand.get("description") or "", location_name) >= 0.65:
-                        effective_payer_id = str(cand.get("optionalField") or cand.get("value") or "").strip()
+
+            # 2. Match on location_name similarity
+            if not matched_cand and location_name:
+                best_sim = 0.0
+                for cand in tk_cands:
+                    sim = calculate_location_similarity(cand.get("description"), location_name)
+                    if sim >= 0.65 and sim > best_sim:
+                        best_sim = sim
+                        matched_cand = cand
+
+            # 3. Match on code prefix / substring (e.g. "AUSAMPI2B" matching "AUSAMP")
+            if not matched_cand and location_id:
+                loc_id_upper = str(location_id).upper()
+                for cand in tk_cands:
+                    cand_val_upper = str(cand.get("value") or "").upper()
+                    if cand_val_upper.startswith(loc_id_upper) or loc_id_upper.startswith(cand_val_upper):
+                        matched_cand = cand
                         break
-        except Exception as e:
-            print(f"[WARN get_direct_rate payer lookup] {e}")
+
+            # 4. Fallback match on effective_payer_id
+            if not matched_cand and effective_payer_id:
+                for cand in tk_cands:
+                    cand_opt = str(cand.get("optionalField") or "")
+                    cand_val = str(cand.get("value") or "")
+                    if cand_opt == effective_payer_id or cand_val == effective_payer_id:
+                        matched_cand = cand
+                        break
+
+            if matched_cand:
+                tk_location_id = str(matched_cand.get("value") or "")
+                tk_location_name = matched_cand.get("description")
+                if not effective_payer_id:
+                    effective_payer_id = str(matched_cand.get("optionalField") or tk_location_id).strip()
+    except Exception as e:
+        print(f"[WARN get_direct_rate payer lookup] {e}")
 
     # 2. Determine LightRemit locationId
     eff_loc_id = location_id or f"{country_iso[:3].upper()}ALL"
@@ -1150,6 +1186,8 @@ async def get_direct_rate(
         return {
             "chosen_agent": "TRANSFERKU",
             "provider": "TRANSFERKU",
+            "location_id": tk_location_id or location_id or "",
+            "location_name": tk_location_name or location_name or "",
             "exchange_rate": tk_rate_val,
             "admin_fee": tk_fee,
             "total_pay": tk_sent,
@@ -1162,6 +1200,8 @@ async def get_direct_rate(
         return {
             "chosen_agent": "LIGHTREMIT",
             "provider": "LIGHTREMIT",
+            "location_id": eff_loc_id,
+            "location_name": location_name or "",
             "exchange_rate": lr_exchange,
             "admin_fee": lr_fee,
             "total_pay": lr_collect,
@@ -1171,6 +1211,7 @@ async def get_direct_rate(
             "rate": lr_rate,
             "bank": {
                 "locationId": eff_loc_id,
+                "locationName": location_name or "",
                 "message": lr_rate.get("message", ""),
             },
         }, None
@@ -1458,34 +1499,34 @@ async def fetch_locations_from_both(
     tk_locations = tk_result.get("locations") or []
 
     # Deduplicate Transferku locations against LightRemit and within Transferku using similarity logic
-    if tk_locations:
-        filtered_tk_locations: list[dict] = []
-        for tk_loc in tk_locations:
-            tk_desc = tk_loc.get("description") or ""
-            is_duplicate = False
+    # if tk_locations:
+    #     filtered_tk_locations: list[dict] = []
+    #     for tk_loc in tk_locations:
+    #         tk_desc = tk_loc.get("description") or ""
+    #         is_duplicate = False
 
-            # Check if this Transferku location matches any LightRemit bank
-            if lr_locations:
-                for lr_loc in lr_locations:
-                    lr_desc = lr_loc.get("description") or ""
-                    if calculate_location_similarity(lr_desc, tk_desc) >= similarity_threshold:
-                        is_duplicate = True
-                        if not lr_loc.get("optionalField"):
-                            lr_loc["optionalField"] = tk_loc.get("optionalField") or str(tk_loc.get("value") or "")
-                        break
+    #         # Check if this Transferku location matches any LightRemit bank
+    #         if lr_locations:
+    #             for lr_loc in lr_locations:
+    #                 lr_desc = lr_loc.get("description") or ""
+    #                 if calculate_location_similarity(lr_desc, tk_desc) >= similarity_threshold:
+    #                     is_duplicate = True
+    #                     if not lr_loc.get("optionalField"):
+    #                         lr_loc["optionalField"] = tk_loc.get("optionalField") or str(tk_loc.get("value") or "")
+    #                     break
 
-            if not is_duplicate:
-                # Also check against already kept Transferku locations
-                for existing_tk in filtered_tk_locations:
-                    existing_desc = existing_tk.get("description") or ""
-                    if calculate_location_similarity(existing_desc, tk_desc) >= similarity_threshold:
-                        is_duplicate = True
-                        break
+    #         if not is_duplicate:
+    #             # Also check against already kept Transferku locations
+    #             for existing_tk in filtered_tk_locations:
+    #                 existing_desc = existing_tk.get("description") or ""
+    #                 if calculate_location_similarity(existing_desc, tk_desc) >= similarity_threshold:
+    #                     is_duplicate = True
+    #                     break
 
-            if not is_duplicate:
-                filtered_tk_locations.append(tk_loc)
+    #         if not is_duplicate:
+    #             filtered_tk_locations.append(tk_loc)
 
-        tk_locations = filtered_tk_locations
+    #     tk_locations = filtered_tk_locations
 
     return {
         "iso_code": country_iso,
