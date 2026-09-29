@@ -18,6 +18,7 @@ from sqlalchemy import null
 from app.schemas import BankItem, BankRequest, BaseResponse, CatalogueItem, CatalogueRequest, ErrorItems, ExchangeRateItem, RateItem, RateItemSuccess, RateRequest, ResponseSchema
 from app.config import settings
 from app.utils.signature import build_request
+# pyrefly: ignore [missing-import]
 from passlib.hash import bcrypt
 
 router = APIRouter()

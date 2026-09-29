@@ -150,6 +150,12 @@ class SendTransactionRequest(BaseModel):
     callback_url: Optional[str] = Field(default=None, alias="callbackUrl")
     additional_info: Optional[dict[str, Any]] = Field(default_factory=dict, alias="additionalInfo")
 
+    payer_id: Optional[str] = Field(default=None, alias="payerId")
+    transaction_type: Optional[str] = Field(default="C2C", alias="transactionType")
+    card_number: Optional[str] = Field(default=None, alias="cardNumber")
+    msisdn: Optional[str] = Field(default=None, alias="msisdn")
+    iban: Optional[str] = Field(default=None, alias="iban")
+    credit_party_identifier: Optional[dict[str, Any]] = Field(default=None, alias="creditPartyIdentifier")
     agent_session_id: Optional[str] = None
     agent_txn_id: Optional[str] = None
     location_id: str = Field(alias="locationId")

@@ -20,6 +20,7 @@ from app.schemas import (
     TransferkuCustomerRequest,
     TransferkuCustomerResponse,
 )
+from app.services.catalogueServices import fetch_payers_for_country
 from app.services.schemasService import build_lightremit_payload
 from app.utils.redis import redis_client
 from app.utils.signature import build_request, generate_agent_txn_id
@@ -783,6 +784,156 @@ async def create_beneficiary(
     return data
 
 
+def build_transferku_credit_party_identifier(
+    req: SendTransactionRequest,
+    payer: Optional[dict[str, Any]] = None,
+    accepted_identifiers: Optional[list[Any]] = None,
+    transaction_type: Optional[str] = None,
+) -> dict[str, Any]:
+    """
+    Dynamically builds the credit_party_identifier payload to match Transferku's
+    credit_party_identifiers_accepted for the specific payer and transaction type.
+    """
+    # 1. If caller supplied an explicit credit_party_identifier dict, prune null/empty and use it
+    if req.credit_party_identifier and isinstance(req.credit_party_identifier, dict):
+        cleaned = {k: v for k, v in req.credit_party_identifier.items() if v is not None and v != ""}
+        if cleaned:
+            return cleaned
+
+    tx_type = (transaction_type or getattr(req, "transaction_type", None) or "C2C").strip().upper()
+
+    # 2. Resolve accepted_identifiers from payer object if not explicitly provided
+    if accepted_identifiers is None and payer:
+        tx_configs = payer.get("transaction_types", {})
+        tx_config = tx_configs.get(tx_type) or tx_configs.get("C2C")
+        if not tx_config and tx_configs:
+            tx_config = next(iter(tx_configs.values()), {})
+        if isinstance(tx_config, dict):
+            accepted_identifiers = tx_config.get("credit_party_identifiers_accepted", [])
+
+    # Normalize accepted_identifiers into a list of candidate combinations
+    # Handles both flat list ["bank_account_number", "location_detail"] and nested list [["msisdn"]]
+    combinations: list[list[str]] = []
+    if accepted_identifiers:
+        if all(isinstance(x, str) for x in accepted_identifiers):
+            combinations = [accepted_identifiers]
+        elif all(isinstance(x, list) for x in accepted_identifiers):
+            combinations = accepted_identifiers
+
+    # 3. Resolve location_detail if applicable
+    loc_id = req.location_id or ""
+    loc_name = req.location_name or req.bank_name or ""
+
+    # Auto-resolve locationName from payer's location_detail catalogue if missing
+    if payer and not loc_name:
+        tx_configs = payer.get("transaction_types", {})
+        tx_cfg = tx_configs.get(tx_type) or tx_configs.get("C2C") or (next(iter(tx_configs.values()), {}) if tx_configs else {})
+        payer_locations = tx_cfg.get("location_detail", []) if isinstance(tx_cfg, dict) else []
+        for loc in payer_locations:
+            if str(loc.get("locationId")) == str(loc_id):
+                loc_name = loc.get("locationName") or ""
+                break
+        if not loc_name and payer_locations and not loc_id:
+            loc_id = payer_locations[0].get("locationId", "")
+            loc_name = payer_locations[0].get("locationName", "")
+
+    location_detail_payload = None
+    if loc_id:
+        location_detail_payload = {
+            "locationId": loc_id,
+            "locationName": loc_name or loc_id,
+        }
+
+    # 4. Map potential request attributes to Transferku identifier field names
+    additional = req.additional_info or {}
+    card_number = (
+        getattr(req, "card_number", None)
+        or additional.get("card_number")
+        or (req.bank_account_number if getattr(req, "payment_mode", "") in ("CARD", "C") else None)
+    )
+    if not card_number and req.bank_account_number:
+        card_number = req.bank_account_number
+
+    msisdn = (
+        getattr(req, "msisdn", None)
+        or additional.get("msisdn")
+        or req.receiver_wallet_id_number
+        or req.receiver_contact_number
+    )
+
+    bank_account_number = req.bank_account_number or additional.get("bank_account_number")
+    bank_branch_name = (
+        req.bank_branch_name
+        or req.bank_branch_code
+        or additional.get("bank_branch_name")
+        or additional.get("bank_branch_code")
+    )
+    swift_bic_code = req.swift_code or getattr(req, "swift_bic_code", None) or additional.get("swift_bic_code") or additional.get("swift_code")
+    iban = getattr(req, "iban", None) or additional.get("iban") or (bank_account_number if bank_account_number and bank_account_number[:2].isalpha() else None)
+
+    field_pool: dict[str, Any] = {
+        "card_number": card_number,
+        "msisdn": msisdn,
+        "bank_account_number": bank_account_number,
+        "account_number": bank_account_number,
+        "bank_branch_name": bank_branch_name,
+        "bsb_code":bank_branch_name,
+        "bank_branch_code": bank_branch_name,
+        "swift_bic_code": swift_bic_code,
+        "swift_code": swift_bic_code,
+        "swift": swift_bic_code,
+        "iban": iban,
+        "location_detail": location_detail_payload,
+    }
+
+    # Add any extra keys found in additional_info
+    for k, v in additional.items():
+        if k not in field_pool and v is not None and v != "":
+            field_pool[k] = v
+
+    # 5. Build identifier based on accepted combination
+    if combinations:
+        for combo in combinations:
+            resolved_combo = {}
+            all_matched = True
+            for f in combo:
+                val = field_pool.get(f)
+                if val is not None and val != "":
+                    resolved_combo[f] = val
+                else:
+                    all_matched = False
+                    break
+            if all_matched:
+                return resolved_combo
+
+        # Fallback: take the first combination and fill with available fields
+        first_combo = combinations[0]
+        partial = {f: field_pool[f] for f in first_combo if field_pool.get(f) is not None and field_pool[f] != ""}
+        if partial:
+            return partial
+
+    # 6. Generic fallback if payer or accepted list is not available
+    fallback: dict[str, Any] = {}
+    if field_pool.get("bank_account_number"):
+        fallback["bank_account_number"] = field_pool["bank_account_number"]
+        if field_pool.get("bank_branch_name"):
+            fallback["bank_branch_name"] = field_pool["bank_branch_name"]
+        if location_detail_payload:
+            fallback["location_detail"] = location_detail_payload
+    elif field_pool.get("card_number"):
+        fallback["card_number"] = field_pool["card_number"]
+    elif field_pool.get("msisdn"):
+        fallback["msisdn"] = field_pool["msisdn"]
+
+    if not fallback:
+        for k in ("card_number", "msisdn", "bank_account_number", "iban"):
+            if field_pool.get(k):
+                fallback[k] = field_pool[k]
+                break
+
+    return fallback
+
+
 async def send_transferku_transaction(
     req: SendTransactionRequest,
     sender: Sender,
@@ -835,6 +986,41 @@ async def send_transferku_transaction(
     # 4. Generate unique external_id
     external_id = generate_transferku_external_id()
 
+    # Resolve payer info if not provided in kwargs
+    payer = kwargs.get("payer")
+    if not payer and req.receiver_country:
+        target_id = str(req.payer_id or kwargs.get("payer_id") or req.location_id or "").strip()
+        try:
+            if client is not None:
+                payers = await fetch_payers_for_country(client, req.receiver_country)
+            else:
+                async with httpx.AsyncClient(timeout=15.0) as new_client:
+                    payers = await fetch_payers_for_country(new_client, req.receiver_country)
+
+            if payers:
+                payer = next((p for p in payers if str(p.get("payer_id")) == target_id), None)
+                if not payer:
+                    for p in payers:
+                        for tx in p.get("transaction_types", {}).values():
+                            if isinstance(tx, dict) and any(
+                                str(loc.get("locationId")) == target_id
+                                for loc in tx.get("location_detail", [])
+                            ):
+                                payer = p
+                                break
+                        if payer:
+                            break
+        except Exception as e:
+            print(f"[WARN send_transferku_transaction] Failed to resolve payer for credit_party_identifier: {e}")
+
+    # Build dynamic credit_party_identifier
+    credit_party_identifier = build_transferku_credit_party_identifier(
+        req=req,
+        payer=payer,
+        accepted_identifiers=kwargs.get("credit_party_identifiers_accepted"),
+        transaction_type=req.transaction_type or kwargs.get("transaction_type") or "C2C",
+    )
+
     # 5. Build body according to Transferku /v1/transfers spec
     body = {
         "quote_id": str(quote_id),
@@ -842,14 +1028,7 @@ async def send_transferku_transaction(
         "purpose_of_remittance": req.purpose_of_remittance,
         "source_of_funds": req.sender_source_of_fund,
         "beneficiary_relationship": req.sender_beneficiary_relationship,
-        "credit_party_identifier": {
-            "bank_account_number": req.bank_account_number or "",
-            "bank_branch_name": req.bank_branch_name or req.bank_branch_code or "",
-            "location_detail": {
-                "locationId": req.location_id,
-                "locationName": req.location_name or req.bank_name or "",
-            },
-        },
+        "credit_party_identifier": credit_party_identifier,
         "sender_id": str(sender_id),
         "beneficiary_id": str(beneficiary_id),
         "callback_url": req.callback_url or "https://client.com/webhook",
