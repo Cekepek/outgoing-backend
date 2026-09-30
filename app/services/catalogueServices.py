@@ -1447,6 +1447,46 @@ def extract_transferku_locations(
 
     return locations
 
+def merge_locations(lr: list[dict], tk: list[dict], mapping: dict[str, str]) -> list[dict]:
+    """mapping: transferku location_id -> lightremit location_id (curated)."""
+    merged: dict[str, dict] = {}
+    for loc in lr:
+        merged[loc["value"]] = {
+            "canonical_id": loc["value"],
+            "name": loc["description"],
+            "providers": {"lightremit": {"location_id": loc["value"]}},
+        }
+    for loc in tk:
+        key = mapping.get(loc["value"]) or loc["value"]   # unmapped -> its own entry
+        entry = merged.setdefault(key, {
+            "canonical_id": key,
+            "name": loc["description"],
+            "providers": {},
+        })
+        entry["providers"]["transferku"] = {
+            "location_id": loc["value"],
+            "payer_id": loc["optionalField"],
+            "transaction_type": "C2C",
+        }
+    return list(merged.values())
+
+def build_mapping_candidates(lr: list[dict], tk: list[dict]) -> list[dict]:
+    lr_by_id = {l["value"]: l for l in lr}
+    lr_by_name = {normalize_location_name(l["description"]): l for l in lr}
+    rows = []
+    for t in tk:
+        name = normalize_location_name(t["description"])
+        if t["value"] in lr_by_id and normalize_location_name(lr_by_id[t["value"]]["description"]) == name:
+            rows.append({"tk": t["value"], "lr": t["value"], "status": "approved"})
+        elif name in lr_by_name:
+            rows.append({"tk": t["value"], "lr": lr_by_name[name]["value"], "status": "approved"})
+        else:
+            best = max(lr, key=lambda l: calculate_location_similarity(l["description"], t["description"]), default=None)
+            if best:
+                score = calculate_location_similarity(best["description"], t["description"])
+                if score >= 0.8:
+                    rows.append({"tk": t["value"], "lr": best["value"], "status": "pending_review", "score": score})
+    return rows
 
 async def fetch_locations_from_both(
     iso_code: str,
@@ -1527,20 +1567,22 @@ async def fetch_locations_from_both(
     #             filtered_tk_locations.append(tk_loc)
 
     #     tk_locations = filtered_tk_locations
-
-    return {
-        "iso_code": country_iso,
-        "lightremit": {
-            "locations": lr_locations,
-            "total": len(lr_locations),
-            "error": lr_result["error"],
-        },
-        "transferku": {
-            "locations": tk_locations,
-            "total": len(tk_locations),
-            "error": tk_result["error"],
-        },
+    candidates = build_mapping_candidates(lr_locations, tk_locations)
+    mapping = {
+        row["tk"]: row["lr"]
+        for row in candidates
+        if row["status"] == "approved"
     }
+    merged_locations = merge_locations(lr_locations, tk_locations, mapping)
+    return {
+    "iso_code": country_iso,
+    "locations": merged_locations,
+    "total": len(merged_locations),
+    "errors": {
+        "lightremit": lr_result["error"],
+        "transferku": tk_result["error"],
+    },
+}
 
 
 # Aliases
