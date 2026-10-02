@@ -1,3 +1,7 @@
+import logging
+from datetime import timezone
+from redis.exceptions import RedisError
+from app.utils.redis import get_redis_client
 import asyncio
 from datetime import datetime
 import difflib
@@ -1488,7 +1492,7 @@ def build_mapping_candidates(lr: list[dict], tk: list[dict]) -> list[dict]:
                     rows.append({"tk": t["value"], "lr": best["value"], "status": "pending_review", "score": score})
     return rows
 
-async def fetch_locations_from_both(
+async def _build_locations(
     iso_code: str,
     payment_mode: str = "B",
     transaction_type: str | None = None,
@@ -1537,36 +1541,6 @@ async def fetch_locations_from_both(
 
     lr_locations = lr_result.get("locations") or []
     tk_locations = tk_result.get("locations") or []
-
-    # Deduplicate Transferku locations against LightRemit and within Transferku using similarity logic
-    # if tk_locations:
-    #     filtered_tk_locations: list[dict] = []
-    #     for tk_loc in tk_locations:
-    #         tk_desc = tk_loc.get("description") or ""
-    #         is_duplicate = False
-
-    #         # Check if this Transferku location matches any LightRemit bank
-    #         if lr_locations:
-    #             for lr_loc in lr_locations:
-    #                 lr_desc = lr_loc.get("description") or ""
-    #                 if calculate_location_similarity(lr_desc, tk_desc) >= similarity_threshold:
-    #                     is_duplicate = True
-    #                     if not lr_loc.get("optionalField"):
-    #                         lr_loc["optionalField"] = tk_loc.get("optionalField") or str(tk_loc.get("value") or "")
-    #                     break
-
-    #         if not is_duplicate:
-    #             # Also check against already kept Transferku locations
-    #             for existing_tk in filtered_tk_locations:
-    #                 existing_desc = existing_tk.get("description") or ""
-    #                 if calculate_location_similarity(existing_desc, tk_desc) >= similarity_threshold:
-    #                     is_duplicate = True
-    #                     break
-
-    #         if not is_duplicate:
-    #             filtered_tk_locations.append(tk_loc)
-
-    #     tk_locations = filtered_tk_locations
     candidates = build_mapping_candidates(lr_locations, tk_locations)
     mapping = {
         row["tk"]: row["lr"]
@@ -1584,7 +1558,163 @@ async def fetch_locations_from_both(
     },
 }
 
+logger = logging.getLogger(__name__)
 
+LOCATIONS_TTL = 6 * 3600             # fresh copy: both providers answered
+LOCATIONS_PARTIAL_TTL = 120          # one provider failed: retry soon
+LOCATIONS_STALE_TTL = 7 * 24 * 3600  # last-known-good copy, used if both providers fail
+LOCK_TTL = 30                        # seconds, prevents several workers rebuilding at once
+
+
+def _keys(iso: str, mode: str, tx: str) -> dict[str, str]:
+    base = f"locations:{iso}:{mode}:{tx}"
+    return {
+        "fresh": base,                  # full JSON payload
+        "stale": f"{base}:stale",       # long-lived backup
+        "idx": f"{base}:idx",           # hash: canonical_id -> bank JSON
+        "lock": f"{base}:lock",
+    }
+
+
+async def _read_json(r, key: str) -> dict | None:
+    try:
+        raw = await r.get(key)
+        return json.loads(raw) if raw else None
+    except (RedisError, ValueError) as e:
+        logger.warning("locations cache read failed key=%s err=%r", key, e)
+        return None
+
+
+async def _write_cache(r, keys: dict[str, str], payload: dict, ttl: int, keep_stale: bool) -> None:
+    """Store the full payload and a per-bank index so quotes can look up one bank in O(1)."""
+    try:
+        blob = json.dumps(payload, ensure_ascii=False)
+        async with r.pipeline(transaction=True) as pipe:
+            pipe.set(keys["fresh"], blob, ex=ttl)
+            if keep_stale:
+                pipe.set(keys["stale"], blob, ex=LOCATIONS_STALE_TTL)
+            pipe.delete(keys["idx"])
+            if payload["locations"]:
+                pipe.hset(
+                    keys["idx"],
+                    mapping={
+                        b["canonical_id"]: json.dumps(b, ensure_ascii=False)
+                        for b in payload["locations"]
+                    },
+                )
+                pipe.expire(keys["idx"], ttl)
+            await pipe.execute()
+    except RedisError as e:
+        logger.warning("locations cache write failed key=%s err=%r", keys["fresh"], e)
+
+
+async def fetch_locations_from_both(
+    iso_code: str,
+    payment_mode: str = "B",
+    transaction_type: str | None = "C2C",
+    force_refresh: bool = False,
+) -> dict:
+    iso = iso_code.strip().upper()
+    tx = (transaction_type or "C2C").upper()
+    keys = _keys(iso, payment_mode, tx)
+    r = await get_redis_client()
+
+    # 1. Fresh cache hit
+    if not force_refresh:
+        cached = await _read_json(r, keys["fresh"])
+        if cached:
+            return {**cached, "source": "cache"}
+
+    # 2. Single-flight: only one worker rebuilds, the others wait for its result
+    got_lock = False
+    try:
+        got_lock = bool(await r.set(keys["lock"], "1", nx=True, ex=LOCK_TTL))
+    except RedisError as e:
+        logger.warning("locations lock failed err=%r", e)
+        got_lock = True  # Redis trouble: just build without the lock
+
+    if not got_lock:
+        for _ in range(20):                 # wait up to ~5s
+            await asyncio.sleep(0.25)
+            cached = await _read_json(r, keys["fresh"])
+            if cached:
+                return {**cached, "source": "cache"}
+        # the other worker didn't finish: build it ourselves
+
+    try:
+        # 3. Build live
+        payload = await _build_locations(
+            iso_code=iso, payment_mode=payment_mode, transaction_type=tx
+        )
+        payload["cached_at"] = datetime.now(timezone.utc).isoformat()
+        errors = payload["errors"]
+        n_failed = sum(1 for e in errors.values() if e)
+
+        if n_failed == 0 and payload["locations"]:
+            await _write_cache(r, keys, payload, LOCATIONS_TTL, keep_stale=True)
+            return {**payload, "source": "live"}
+
+        if n_failed == 1 and payload["locations"]:
+            # Partial result: cache briefly so we don't hammer the failing provider,
+            # but don't overwrite the good stale copy.
+            await _write_cache(r, keys, payload, LOCATIONS_PARTIAL_TTL, keep_stale=False)
+            return {**payload, "source": "live"}
+
+        # 4. Everything failed (or empty): fall back to the last good copy
+        stale = await _read_json(r, keys["stale"])
+        if stale:
+            logger.warning("serving stale locations iso=%s tx=%s errors=%s", iso, tx, errors)
+            await _write_cache(r, keys, stale, LOCATIONS_PARTIAL_TTL, keep_stale=False)
+            return {**stale, "errors": errors, "source": "stale"}
+
+        return {**payload, "source": "live"}  # nothing to fall back to; caller sees the errors
+    finally:
+        if got_lock:
+            try:
+                await r.delete(keys["lock"])
+            except RedisError:
+                pass
+
+
+async def get_bank(
+    iso_code: str,
+    canonical_id: str,
+    payment_mode: str = "B",
+    transaction_type: str = "C2C",
+) -> dict:
+    """Used by the quote endpoint: returns one merged bank (with its `providers` block)."""
+    iso = iso_code.strip().upper()
+    tx = (transaction_type or "C2C").upper()
+    keys = _keys(iso, payment_mode, tx)
+    r = await get_redis_client()
+
+    raw = None
+    try:
+        raw = await r.hget(keys["idx"], canonical_id)
+        if raw is None and not await r.exists(keys["idx"]):
+            # index expired or never built: rebuild once, then retry
+            await fetch_locations_from_both(iso, payment_mode, tx)
+            raw = await r.hget(keys["idx"], canonical_id)
+    except RedisError as e:
+        logger.warning("get_bank redis failed err=%r", e)
+
+    if raw is None:
+        # Redis down or bank missing: fall back to the payload itself
+        data = await fetch_locations_from_both(iso, payment_mode, tx)
+        for b in data["locations"]:
+            if b["canonical_id"] == canonical_id:
+                return b
+        raise HTTPException(status_code=404, detail="Unknown bank. Please reload the bank list.")
+
+    return json.loads(raw)
+
+
+async def invalidate_locations(iso_code: str, payment_mode: str = "B", transaction_type: str = "C2C") -> None:
+    """Call after you approve new rows in the mapping table, so the merged list is rebuilt."""
+    keys = _keys(iso_code.strip().upper(), payment_mode, (transaction_type or "C2C").upper())
+    r = await get_redis_client()
+    await r.delete(keys["fresh"], keys["idx"])   # keep :stale as the safety net
+    
 # Aliases
 fetch_locations = fetch_locations_from_both
 fetch_locations_transferku_and_lightremit = fetch_locations_from_both
