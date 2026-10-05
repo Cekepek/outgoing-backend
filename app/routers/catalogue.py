@@ -155,26 +155,14 @@ async def get_rate(rate_request: RateRequest):
             payout_country=rate_request.payout_country,
             payout_currency=rate_request.payout_currency,
             transfer_amount=rate_request.transfer_amount,
+            canonical_id=rate_request.canonical_id,
             calc_by=rate_request.calc_by or "P",
             payment_mode=rate_request.payment_mode or "B",
-            location_id=rate_request.location_id,
-            location_name=rate_request.location_name,
-            payer_id=rate_request.payer_id,
-            optional_field=rate_request.optional_field,
-            transaction_type=rate_request.transaction_type,
+            transaction_type=rate_request.transaction_type or "C2C",
         )
         if result is not None:
-            return BaseResponse(
-                status="success",
-                message="Data fetched successfully",
-                data=result,
-            )
-        else:
-            return BaseResponse(
-                status="error",
-                message=error_message or "Data not found",
-                data={},
-            )
+            return BaseResponse(status="success", message="Data fetched successfully", data=result)
+        return BaseResponse(status="error", message=error_message or "Data not found", data={})
     except Exception as e:
         print(f"[ERROR get_rate] {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

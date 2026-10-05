@@ -89,25 +89,21 @@ class RateRequest(BaseModel):
             "example": {
                 "transferAmount": "1000",
                 "calcBy": "P",
-                "payoutCurrency": "SGD",
+                "payoutCurrency": "MYR",
                 "paymentMode": "B",
-                "payoutCountry": "SGP",
-                "locationId": "SGPALL",
-                "payerId": "648536",
-                "optionalField": "648536",
+                "payoutCountry": "MYS",
+                "canonicalId": "MYSAFF",
+                "transactionType": "C2C",
             }
         },
     )
 
     transfer_amount: str = Field(..., alias="transferAmount")
-    calc_by: Optional[Literal["C", "P"]] = Field(default="P", alias="calcBy") 
+    calc_by: Optional[Literal["C", "P"]] = Field(default="P", alias="calcBy")
     payout_currency: str = Field(..., alias="payoutCurrency")
     payment_mode: Optional[str] = Field(default="B", alias="paymentMode")
     payout_country: str = Field(..., alias="payoutCountry")
-    location_id: Optional[str] = Field(default=None, alias="locationId")
-    location_name: Optional[str] = Field(default=None, alias="locationName")
-    payer_id: Optional[str] = Field(default=None, alias="payerId")
-    optional_field: Optional[str] = Field(default=None, alias="optionalField")
+    canonical_id: str = Field(..., alias="canonicalId")
     transaction_type: Optional[str] = Field(default="C2C", alias="transactionType")
 
 
