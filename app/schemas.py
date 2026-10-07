@@ -72,6 +72,7 @@ class LocationRequest(BaseModel):
     iso_code: str = Field(..., alias="isoCode")
     payment_mode: Optional[str] = Field(default="B", alias="paymentMode")
     transaction_type: Optional[str] = Field(default=None, alias="transactionType")
+    force_refresh: Optional[bool] = Field(default=False, alias="forceRefresh")
 
 class BankRequest(BaseModel):
     paymentMode: str = ""

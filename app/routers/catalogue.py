@@ -199,6 +199,7 @@ async def get_locations(req: LocationRequest):
             iso_code=req.iso_code,
             payment_mode=req.payment_mode or "B",
             transaction_type=req.transaction_type,
+            force_refresh=req.force_refresh or False,
         )
         return BaseResponse(
             status="success",

@@ -9,6 +9,7 @@ import json
 import random
 import re
 import string
+from typing import Any
 from fastapi import HTTPException
 import httpx
 from app.utils.signature import build_request
@@ -37,6 +38,45 @@ CURRENCY_NAME = {
     "SGP": "SGD",
     "THA": "THB",
 }
+
+MAJOR_BANKS: dict[str, list[dict[str, Any]]] = {
+    "HKG": [
+        {"name": "Bank of China (Hong Kong)", "swift": "BKCHHKHH",
+         "aliases": ["BANKOFCHINAHONGKONG", "BANKOFCHINA"]},
+        {"name": "Citibank", "swift": "CITIHKAX",
+         "aliases": ["CITIBANK"]},
+        {"name": "Hang Seng Bank", "swift": "HASEHKHH",
+         "aliases": ["HANGSENG"]},
+        {"name": "HSBC", "swift": "HSBCHKHH",
+         "aliases": ["HSBC", "HONGKONGANDSHANGHAIBANKING"]},
+        {"name": "Standard Chartered Bank", "swift": "SCBLHKHH",
+         "aliases": ["STANDARDCHARTERED"]},
+        {"name": "DBS Bank (Hong Kong)", "swift": "DHBKHKHH",
+         "aliases": ["DBSBANK", "DBSHONGKONG"]},
+        {"name": "Bank of East Asia", "swift": "BEASHKHH",
+         "aliases": ["BANKOFEASTASIA"]},
+        {"name": "China Construction Bank (Asia)", "swift": "PCBCHKHH",
+         "aliases": ["CHINACONSTRUCTIONBANK"]},
+        {"name": "ICBC (Asia)", "swift": "UBHKHKHH",
+         "aliases": ["ICBCASIA", "INDUSTRIALANDCOMMERCIALBANKOFCHINA"]},
+        {"name": "Bank of Communications (Hong Kong)", "swift": "COMMHKHH",
+         "aliases": ["BANKOFCOMMUNICATIONS"]},
+        {"name": "OCBC Bank (Hong Kong)", "swift": "WIHBHKHH",
+         "aliases": ["OCBC", "OVERSEACHINESEBANKING"]},
+        {"name": "Dah Sing Bank", "swift": "DSBAHKHH",
+         "aliases": ["DAHSING"]},
+        {"name": "CMB Wing Lung Bank", "swift": "WLBKHKHH",
+         "aliases": ["WINGLUNG"]},
+        {"name": "Chong Hing Bank", "swift": "LCHBHKHH",
+         "aliases": ["CHONGHING"]},
+        {"name": "Nanyang Commercial Bank", "swift": "NYCBHKHH",
+         "aliases": ["NANYANGCOMMERCIAL"]},
+        {"name": "China CITIC Bank International", "swift": "CIBKHKHH",
+         "aliases": ["CHINACITIC", "CITICBANKINTERNATIONAL"]},
+    ],
+    # "IDN": [...], "SGP": [...]  add other countries here
+}
+
 def enrich_catalogue(catalogue_type: str, raw_result: list[dict]) -> list[dict]:
     if catalogue_type == "CTY":
         return [
@@ -1452,6 +1492,144 @@ def build_mapping_candidates(lr: list[dict], tk: list[dict]) -> list[dict]:
                     rows.append({"tk": t["value"], "lr": best["value"], "status": "pending_review", "score": score})
     return rows
 
+
+def is_all_banks_location(loc: dict) -> bool:
+    name = (loc.get("name") or "").lower()
+    canonical = (loc.get("canonical_id") or "").upper()
+    return "all banks" in name or "all bank" in name or canonical.endswith("ALL")
+
+
+def matches_major_bank(loc: dict, major: dict) -> bool:
+    loc_name = loc.get("name") or ""
+    major_name = major.get("name") or ""
+    if not loc_name or not major_name:
+        return False
+
+    norm_loc = normalize_location_name(loc_name)
+    norm_major = normalize_location_name(major_name)
+    if norm_loc and norm_loc == norm_major:
+        return True
+
+    clean_loc = re.sub(r"[^A-Z0-9]", "", loc_name.upper())
+    clean_major = re.sub(r"[^A-Z0-9]", "", major_name.upper())
+    if clean_loc and clean_loc == clean_major:
+        return True
+
+    clean_cid = re.sub(r"[^A-Z0-9]", "", (loc.get("canonical_id") or "").upper())
+    for alias in major.get("aliases", []):
+        clean_alias = re.sub(r"[^A-Z0-9]", "", alias.upper())
+        if not clean_alias:
+            continue
+        if clean_alias == clean_loc:
+            return True
+        if len(clean_alias) >= 4 and clean_alias in clean_loc:
+            return True
+        if len(clean_loc) >= 4 and clean_loc in clean_alias:
+            return True
+        if len(clean_alias) >= 3 and clean_alias in clean_cid:
+            return True
+        if len(clean_cid) >= 4 and clean_cid in clean_alias:
+            return True
+
+    if loc.get("swift") and major.get("swift") and loc.get("swift").upper() == major.get("swift").upper():
+        return True
+
+    score = calculate_location_similarity(loc_name, major_name)
+    if score >= 0.75:
+        return True
+
+    return False
+
+
+def enrich_locations_with_major_banks(
+    locations: list[dict],
+    iso_code: str,
+    keep_all_banks: bool = True,
+) -> list[dict]:
+    """
+    Expands generic 'All Banks' entries into major banks with SWIFT codes prefilled.
+    - If a major bank collides with an existing bank in the response, preserves its name,
+      prefills SWIFT code, and attaches Transferku provider config.
+    - If a major bank does not exist, a new entry is created with canonical_id '{iso}_{swift}'.
+    - Generic 'All Banks' entries (e.g. SWIFT, LOCAL, PROXY) are kept at the bottom so
+      unlisted banks and local clearing routes remain accessible.
+    """
+    country_iso = iso_code.strip().upper()
+    major_list = MAJOR_BANKS.get(country_iso)
+    if not major_list:
+        return locations
+
+    all_banks_entries = [loc for loc in locations if is_all_banks_location(loc)]
+    if not all_banks_entries:
+        return locations
+
+    swift_all_banks = next(
+        (loc for loc in all_banks_entries if "swift" in (loc.get("name") or "").lower()),
+        all_banks_entries[0],
+    )
+    all_banks_providers = swift_all_banks.get("providers") or {}
+    tk_provider_template = all_banks_providers.get("transferku")
+
+    regular_locations: list[dict] = []
+    for loc in locations:
+        if not is_all_banks_location(loc):
+            regular_locations.append(dict(loc))
+
+    matched_major_indices: set[int] = set()
+
+    # Step 1: Detect and handle collisions with existing banks
+    for loc in regular_locations:
+        for idx, major in enumerate(major_list):
+            if idx in matched_major_indices:
+                continue
+            if matches_major_bank(loc, major):
+                swift_code = major.get("swift", "")
+                if swift_code:
+                    loc["swift"] = swift_code
+                    loc["swift_code"] = swift_code
+
+                if tk_provider_template:
+                    providers = dict(loc.get("providers") or {})
+                    if "transferku" not in providers:
+                        providers["transferku"] = dict(tk_provider_template)
+                        loc["providers"] = providers
+
+                matched_major_indices.add(idx)
+                break
+
+    # Step 2: Add uncollided major banks
+    new_locations: list[dict] = []
+    for idx, major in enumerate(major_list):
+        if idx in matched_major_indices:
+            continue
+        swift_code = major.get("swift", "")
+        canonical_id = (
+            f"{country_iso}_{swift_code}"
+            if swift_code
+            else f"{country_iso}_{re.sub(r'[^A-Z0-9]', '', major['name'].upper())}"
+        )
+
+        providers: dict[str, Any] = {}
+        if tk_provider_template:
+            providers["transferku"] = dict(tk_provider_template)
+
+        new_entry = {
+            "canonical_id": canonical_id,
+            "name": major["name"],
+            "swift": swift_code,
+            "swift_code": swift_code,
+            "providers": providers,
+        }
+        new_locations.append(new_entry)
+
+    # Step 3: Combine regular locations, new major banks, and all-banks entries
+    result = regular_locations + new_locations
+    if keep_all_banks:
+        result.extend(all_banks_entries)
+
+    return result
+
+
 async def _build_locations(
     iso_code: str,
     payment_mode: str = "B",
@@ -1508,15 +1686,17 @@ async def _build_locations(
         if row["status"] == "approved"
     }
     merged_locations = merge_locations(lr_locations, tk_locations, mapping)
+    enriched_locations = enrich_locations_with_major_banks(merged_locations, country_iso)
     return {
-    "iso_code": country_iso,
-    "locations": merged_locations,
-    "total": len(merged_locations),
-    "errors": {
-        "lightremit": lr_result["error"],
-        "transferku": tk_result["error"],
-    },
-}
+        "iso_code": country_iso,
+        "locations": enriched_locations,
+        "total": len(enriched_locations),
+        "errors": {
+            "lightremit": lr_result["error"],
+            "transferku": tk_result["error"],
+        },
+    }
+
 
 logger = logging.getLogger(__name__)
 
