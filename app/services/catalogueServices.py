@@ -74,6 +74,22 @@ MAJOR_BANKS: dict[str, list[dict[str, Any]]] = {
         {"name": "China CITIC Bank International", "swift": "CIBKHKHH",
          "aliases": ["CHINACITIC", "CITICBANKINTERNATIONAL"]},
     ],
+    "SGP": [
+        {"name": "Citibank", "swift": "CITISGSGGCB",
+         "aliases": ["CITIBANK"]},
+        {"name": "DBS Bank", "swift": "DBSSSGSG",
+         "aliases": ["DBSBANK", "DBSINGAPORE"]},
+        {"name": "HSBC BANK (SINGAPORE) LIMITED", "swift": "HSBCSGS2",
+         "aliases": ["HSBCBANK", "HSBCBANK(SINGAPORE)LIMITED"]},
+        {"name": "MAYBANK SINGAPORE LIMITED", "swift": "MBBESGSG",
+         "aliases": ["MAYBANK", "MAYBANK(SINGAPORE)LIMITED"]},
+        {"name": "OCBC BANK (SINGAPORE) LIMITED", "swift": "OCBDSGSG",
+         "aliases": ["OCBC", "OCBCBANK(SINGAPORE)LIMITED"]},
+        {"name": "Standard Chartered Bank", "swift": "SCBLHKHH",
+         "aliases": ["STANDARDCHARTERED"]},
+        {"name": "UOB Limited", "swift": "UOVBSGSG",
+         "aliases": ["UOB"]},
+    ],
     # "IDN": [...], "SGP": [...]  add other countries here
 }
 
@@ -1563,12 +1579,36 @@ def enrich_locations_with_major_banks(
     if not all_banks_entries:
         return locations
 
-    swift_all_banks = next(
-        (loc for loc in all_banks_entries if "swift" in (loc.get("name") or "").lower()),
-        all_banks_entries[0],
+    # Extract provider templates from "All Banks" entries for both LightRemit and Transferku
+    all_banks_provider_template: dict[str, Any] = {}
+
+    # 1. LightRemit template: find any all-banks entry with a lightremit provider
+    for loc in all_banks_entries:
+        lr_cfg = loc.get("providers", {}).get("lightremit")
+        if lr_cfg:
+            all_banks_provider_template["lightremit"] = dict(lr_cfg)
+            break
+
+    # 2. Transferku template: find all-banks entry with transferku (preferring "SWIFT" in name)
+    tk_swift_entry = next(
+        (
+            loc
+            for loc in all_banks_entries
+            if "swift" in (loc.get("name") or "").lower()
+            and loc.get("providers", {}).get("transferku")
+        ),
+        None,
     )
-    all_banks_providers = swift_all_banks.get("providers") or {}
-    tk_provider_template = all_banks_providers.get("transferku")
+    if tk_swift_entry:
+        all_banks_provider_template["transferku"] = dict(
+            tk_swift_entry["providers"]["transferku"]
+        )
+    else:
+        for loc in all_banks_entries:
+            tk_cfg = loc.get("providers", {}).get("transferku")
+            if tk_cfg:
+                all_banks_provider_template["transferku"] = dict(tk_cfg)
+                break
 
     regular_locations: list[dict] = []
     for loc in locations:
@@ -1588,11 +1628,12 @@ def enrich_locations_with_major_banks(
                     loc["swift"] = swift_code
                     loc["swift_code"] = swift_code
 
-                if tk_provider_template:
+                if all_banks_provider_template:
                     providers = dict(loc.get("providers") or {})
-                    if "transferku" not in providers:
-                        providers["transferku"] = dict(tk_provider_template)
-                        loc["providers"] = providers
+                    for p_name, p_cfg in all_banks_provider_template.items():
+                        if p_name not in providers:
+                            providers[p_name] = dict(p_cfg)
+                    loc["providers"] = providers
 
                 matched_major_indices.add(idx)
                 break
@@ -1609,9 +1650,10 @@ def enrich_locations_with_major_banks(
             else f"{country_iso}_{re.sub(r'[^A-Z0-9]', '', major['name'].upper())}"
         )
 
-        providers: dict[str, Any] = {}
-        if tk_provider_template:
-            providers["transferku"] = dict(tk_provider_template)
+        providers: dict[str, Any] = {
+            p_name: dict(p_cfg)
+            for p_name, p_cfg in all_banks_provider_template.items()
+        }
 
         new_entry = {
             "canonical_id": canonical_id,
