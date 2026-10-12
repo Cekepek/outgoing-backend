@@ -1103,13 +1103,17 @@ async def send_transaction(
     based on the agent specified in SendTransactionRequest (e.g. 'TRANSFERKU' or 'LIGHTREMIT').
     Returns (response_data, chosen_agent).
     """
+    print(req.agent)
     agent = (req.agent or kwargs.get("agent") or "LIGHTREMIT").strip().upper()
+    
 
     if agent == "TRANSFERKU":
         res = await send_transferku_transaction(req, sender=sender, client=client, **kwargs)
+        print("res: ", res)
         return res, "TRANSFERKU"
     else:
         res = await send_lightremit_transaction(req, sender=sender, client=client, **kwargs)
+        print("res: ", res)
         return res, "LIGHTREMIT"
 
 

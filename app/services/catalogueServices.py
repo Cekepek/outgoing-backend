@@ -1698,7 +1698,7 @@ async def _build_locations(
 
     async def _get_transferku_locations():
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0)) as client:
                 payers = await fetch_payers_for_country(client=client, iso_code=country_iso)
             if not payers:
                 return {"locations": [], "error": "Payers not found"}
