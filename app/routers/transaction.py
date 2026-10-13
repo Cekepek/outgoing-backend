@@ -33,6 +33,7 @@ async def send_transaction(
         if not current_user.sender:
             raise HTTPException(status_code=400, detail="No sender profile linked to this account")
         sender = await get_sender_from_db(db, current_user.sender.id)
+        print(f"[INFO] Received send_transaction request: {send_transaction_request}")
 
         raw, agent_used = await process_send_transaction(
             req=send_transaction_request,

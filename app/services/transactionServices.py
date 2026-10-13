@@ -1034,6 +1034,7 @@ async def send_transferku_transaction(
         "callback_url": req.callback_url or "https://client.com/webhook",
         "additional_info": req.additional_info or {},
     }
+    print(body)
 
     url = f"{settings.payment_host_transferku}/v1/transfers"
     auth = httpx.BasicAuth(

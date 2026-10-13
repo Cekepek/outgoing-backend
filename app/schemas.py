@@ -155,10 +155,10 @@ class SendTransactionRequest(BaseModel):
     credit_party_identifier: Optional[dict[str, Any]] = Field(default=None, alias="creditPartyIdentifier")
     agent_session_id: Optional[str] = None
     agent_txn_id: Optional[str] = None
-    location_id: str = Field(alias="locationId")
-    sender_source_of_fund: str = Field(alias="senderSourceOfFund")
-    sender_beneficiary_relationship: str = Field(alias="senderBeneficiaryRelationship")
-    purpose_of_remittance: str = Field(alias="purposeOfRemittance")
+    location_id: Optional[str] = Field(default=None, alias="locationId")
+    sender_source_of_fund: Optional[str] = Field(default=None, alias="senderSourceOfFund")
+    sender_beneficiary_relationship: Optional[str] = Field(default=None, alias="senderBeneficiaryRelationship")
+    purpose_of_remittance: Optional[str] = Field(default=None, alias="purposeOfRemittance")
     # --- Receiver ---
     receiver_first_name: str = Field(alias="receiverFirstName")
     receiver_middle_name: Optional[str] = Field(default="", alias="receiverMiddleName")
@@ -188,11 +188,11 @@ class SendTransactionRequest(BaseModel):
     receiver_company_incorporate_date: Optional[str] = Field(default="", alias="receiverCompanyIncorporateDate")
 
     # --- Transaction / payout ---
-    calc_by: str = Field(alias="calcBy")
-    transfer_amount: str = Field(alias="transferAmount")  # monetary -> str
-    remit_currency: str = Field(alias="remitCurrency")
-    payout_currency: str = Field(alias="payoutCurrency")
-    payment_mode: str = Field(alias="paymentMode")
+    calc_by: Optional[str] = Field(default=None, alias="calcBy")
+    transfer_amount: Optional[str] = Field(default=None, alias="transferAmount")
+    remit_currency: Optional[str] = Field(default=None, alias="remitCurrency")
+    payout_currency: Optional[str] = Field(default=None, alias="payoutCurrency")
+    payment_mode: Optional[str] = Field(default=None, alias="paymentMode")
     bank_name: Optional[str] = Field(default="", alias="bankName")
     bank_branch_name: Optional[str] = Field(default="", alias="bankBranchName")
     bank_branch_code: Optional[str] = Field(default="", alias="bankBranchCode")
