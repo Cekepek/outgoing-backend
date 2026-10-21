@@ -1,20 +1,24 @@
-import logging
-from datetime import timezone
-from redis.exceptions import RedisError
-from app.utils.redis import get_redis_client
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import difflib
 import json
+import logging
+from pathlib import Path
 import random
 import re
 import string
 from typing import Any
+
 from fastapi import HTTPException
 import httpx
-from app.utils.signature import build_request
-from app.utils.redis import redis_client
+from redis.exceptions import RedisError
+
 from app.config import settings
+from app.utils.redis import get_redis_client, redis_client
+from app.utils.signature import build_request
+
+logger = logging.getLogger(__name__)
+
 
 COUNTRY_NAMES = {
     "AUS": "Australia",
@@ -103,8 +107,7 @@ def enrich_catalogue(catalogue_type: str, raw_result: list[dict]) -> list[dict]:
             }
             for item in raw_result
         ]
-    else:
-        return[
+        return [
             {
                 "value": item["data"],
                 "description": item["value"],
@@ -112,8 +115,6 @@ def enrich_catalogue(catalogue_type: str, raw_result: list[dict]) -> list[dict]:
             }
             for item in raw_result
         ]
-    # Unknown/unmapped catalogueType — pass through raw, don't crash
-    return raw_result
 
 async def fetch_bank_list(payout_country: str, payment_mode: str = "B") -> list[dict]:
     try:
@@ -179,62 +180,6 @@ async def fetch_rate(
         print(f"[WARN fetch_rate] locationId={location_id} exception: {e}")
         return None, str(e)
 
-async def best_bank_for_country(
-    payout_country: str,
-    payout_currency: str,
-    transfer_amount: str,
-    calc_by: str,
-    payment_mode: str,
-) -> tuple[dict | None, str | None]:
-    try:
-        banks = await fetch_bank_list(payout_country, payment_mode=payment_mode)
-    except Exception as e:
-        print(f"[WARN best_bank_for_country] fetch_bank_list failed: {e}")
-        return None, str(e)
-
-    # exclude aggregate "ALL BANKS" style entries — not a real payout bank
-    real_banks = [
-        b for b in banks
-        if (b.get("data") or b.get("locationId")) != f"{payout_country[:3].upper()}ALL"
-    ]
-    if not real_banks:
-        return None, "No banks found for this country"
-
-    rate_results = await asyncio.gather(*[
-        fetch_rate(
-            transfer_amount=transfer_amount,
-            calc_by=calc_by,
-            payout_currency=payout_currency,
-            payment_mode=payment_mode,
-            location_id=bank.get("data") or bank.get("locationId"),
-            payout_country=payout_country,
-        )
-        for bank in real_banks
-    ], return_exceptions=True)
-
-    candidates = []
-    errors = []
-    for bank, result in zip(real_banks, rate_results):
-        if isinstance(result, Exception):
-            errors.append(str(result))
-            continue
-        if isinstance(result, tuple):
-            rate, err = result
-            if rate is not None:
-                candidates.append({"bank": bank, "rate": rate})
-            elif err:
-                errors.append(err)
-        elif result is not None:
-            candidates.append({"bank": bank, "rate": result})
-
-    if not candidates:
-        err_msg = errors[0] if errors else "No exchange rate available"
-        return None, err_msg
-
-    # payoutAmount is already net of serviceCharge/vatCharge — best single metric
-    best = max(candidates, key=lambda c: float(c["rate"]["payoutAmount"]))
-    return best, None
-    
 #TRANSFERKU
 PAYERS_NOT_FOUND_STATUS = "1000997"
 
@@ -242,19 +187,6 @@ PAYERS_NOT_FOUND_STATUS = "1000997"
 def generate_transferku_external_id() -> str:
     """Generates a unique 24-digit external ID (timestamp + random digits)."""
     return datetime.now().strftime("%Y%m%d%H%M%S") + "".join(random.choices(string.digits, k=10))
-
-
-async def fetch_countries(client: httpx.AsyncClient) -> list[dict]:
-    try:
-        resp = await client.get(
-            f"{settings.payment_host_transferku}/v1/countries",
-            auth=httpx.BasicAuth(settings.payment_client_id_transferku, settings.payment_client_secret_transferku)
-        )
-        resp.raise_for_status()
-        return resp.json()
-    except Exception as e:
-        print(f"[ERROR fetch_countries] {e}")
-        return []
 
 
 async def fetch_payers_for_country(
@@ -326,74 +258,6 @@ def payer_has_valid_transaction_type(payer: dict, iso_code: str | None = None) -
     return False
 
 
-REDIS_TRANSFERKU_VALID_COUNTRIES_KEY = "transferku:valid_countries"
-
-
-async def get_countries_with_valid_payers(force_refresh: bool = False) -> list[dict]:
-    # 1. Check if the key exists in Redis first
-    if not force_refresh:
-        try:
-            cached_data = await redis_client.get(REDIS_TRANSFERKU_VALID_COUNTRIES_KEY)
-            if cached_data:
-                print("[INFO] Retrieved valid Transferku regions & payers from Redis cache")
-                return json.loads(cached_data)
-        except Exception as e:
-            print(f"[WARN Redis get] Failed to read cache: {e}")
-
-    # 2. Key does not exist -> Fetch from Transferku APIs
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        countries = await fetch_countries(client)
-
-        results: list[dict] = []
-
-        # concurrency limit so we don't hammer the payers endpoint
-        semaphore = asyncio.Semaphore(10)
-
-        async def check_country(country: dict):
-            iso_code = country["iso_code"]
-            async with semaphore:
-                try:
-                    payers = await fetch_payers_for_country(client, iso_code)
-                except httpx.HTTPStatusError:
-                    # treat hard errors as "no payers" rather than crashing
-                    # the whole batch; log this in real usage
-                    return
-
-            if not payers:
-                return
-
-            valid_payers = [p for p in payers if payer_has_valid_transaction_type(p)]
-
-            if valid_payers:
-                results.append(
-                    {
-                        "iso_code": iso_code,
-                        "name": country["name"],
-                        "payer_ids": [p["payer_id"] for p in valid_payers],
-                        "payers": valid_payers,
-                    }
-                )
-
-        await asyncio.gather(*(check_country(c) for c in countries))
-
-        order = {c["iso_code"]: i for i, c in enumerate(countries)}
-        results.sort(key=lambda r: order[r["iso_code"]])
-
-    # 3. Save valid regions and payer_id data into Redis
-    if results:
-        try:
-            await redis_client.set(
-                REDIS_TRANSFERKU_VALID_COUNTRIES_KEY,
-                json.dumps(results),
-                ex=settings.redis_cache_ttl,
-            )
-            print("[INFO] Saved valid Transferku regions & payers into Redis cache")
-        except Exception as e:
-            print(f"[WARN Redis set] Failed to save cache: {e}")
-
-    return results
-
-
 async def fetch_quote_transferku(
     client: httpx.AsyncClient,
     payer_id: str,
@@ -452,64 +316,6 @@ async def fetch_quote_transferku(
         return None, str(e)
 
 
-def _extract_transferku_amounts(quote: dict) -> tuple[float, float]:
-    """Extracts (source_amount, destination_amount) from a Transferku quote response."""
-    data = quote.get("data", quote) if isinstance(quote.get("data"), dict) else quote
-
-    # Source amount (IDR collect amount)
-    source_amt = 0.0
-    if isinstance(data.get("source"), dict) and "amount" in data["source"]:
-        try:
-            source_amt = float(data["source"]["amount"])
-        except (ValueError, TypeError):
-            pass
-    elif "source_amount" in data:
-        try:
-            source_amt = float(data["source_amount"])
-        except (ValueError, TypeError):
-            pass
-    elif "collect_amount" in data:
-        try:
-            source_amt = float(data["collect_amount"])
-        except (ValueError, TypeError):
-            pass
-    elif "total_amount" in data:
-        try:
-            source_amt = float(data["total_amount"])
-        except (ValueError, TypeError):
-            pass
-
-    # Destination amount (Payout amount)
-    dest_amt = 0.0
-    if isinstance(data.get("destination"), dict) and "amount" in data["destination"]:
-        try:
-            dest_amt = float(data["destination"]["amount"])
-        except (ValueError, TypeError):
-            pass
-    elif "destination_amount" in data:
-        try:
-            dest_amt = float(data["destination_amount"])
-        except (ValueError, TypeError):
-            pass
-    elif "payout_amount" in data:
-        try:
-            dest_amt = float(data["payout_amount"])
-        except (ValueError, TypeError):
-            pass
-
-    return source_amt, dest_amt
-
-
-def _format_error_message(lightremit_error: str | None, transferku_error: str | None = None) -> str:
-    if lightremit_error and "service charge is not defined" in lightremit_error.lower():
-        return "the amount is too high or too low"
-    if lightremit_error:
-        return lightremit_error
-    if transferku_error:
-        return transferku_error
-    return "Data not found"
-
-
 def normalize_location_name(name: str | None) -> str:
     """Normalizes location/bank name for accurate matching."""
     if not name:
@@ -558,122 +364,9 @@ def calculate_location_similarity(name1: str | None, name2: str | None) -> float
     return min(score, 1.0)
 
 
-def extract_transferku_location_candidates(
-    payers: list[dict],
-    transaction_type: str | None = None,
-) -> list[dict]:
-    """
-    Extracts all searchable location/bank candidates from Transferku payers
-    along with their associated payer_id and transaction_type.
-    """
-    candidates: list[dict] = []
-    seen: set[tuple[str, str, str]] = set()
-
-    for payer in payers:
-        pid = str(payer.get("payer_id", ""))
-        pname = payer.get("name", "")
-        tx_types = payer.get("transaction_types", {})
-        if not isinstance(tx_types, dict):
-            continue
-
-        types_to_check = (
-            {transaction_type: tx_types[transaction_type]}
-            if (transaction_type and transaction_type in tx_types)
-            else tx_types
-        )
-        if not types_to_check:
-            continue
-        has_locations = False
-        for tx_key, tx_val in types_to_check.items():
-            if not isinstance(tx_val, dict):
-                continue
-            for loc in tx_val.get("location_detail", []):
-                has_locations = True
-                loc_id = loc.get("locationId") or ""
-                loc_name = loc.get("locationName") or pname
-                key = (pid, loc_id, loc_name)
-                if key not in seen:
-                    seen.add(key)
-                    candidates.append({
-                        "payer_id": pid,
-                        "payer_name": pname,
-                        "location_id": loc_id,
-                        "location_name": loc_name,
-                        "transaction_type": tx_key,
-                        "optional_field": loc.get("optionalField", ""),
-                    })
-
-        # If no explicit location_detail list exists, use payer info as candidate
-        if not has_locations and pname:
-            key = (pid, "", pname)
-            if key not in seen:
-                seen.add(key)
-                candidates.append({
-                    "payer_id": pid,
-                    "payer_name": pname,
-                    "location_id": "",
-                    "location_name": pname,
-                    "transaction_type": transaction_type or "C2C",
-                    "optional_field": "",
-                })
-
-    return candidates
-
-
-async def find_similar_locations_in_country(
-    payout_country: str,
-    payment_mode: str = "B",
-    transaction_type: str | None = None,
-    similarity_threshold: float = 0.65,
-) -> list[dict]:
-    """
-    Finds all matched/similar locations available in both LightRemit and Transferku
-    for a given country.
-    """
-    country_iso = payout_country.strip().upper()
-
-    async def _get_lr():
-        try:
-            banks = await fetch_bank_list(country_iso, payment_mode=payment_mode)
-            return [b for b in banks if (b.get("data") or b.get("locationId") or b.get("value")) != f"{country_iso[:3].upper()}ALL"]
-        except Exception:
-            return []
-
-    async def _get_tk():
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                payers = await fetch_payers_for_country(client, country_iso)
-            return extract_transferku_location_candidates(payers or [], transaction_type=transaction_type)
-        except Exception:
-            return []
-
-    lr_banks, tk_candidates = await asyncio.gather(_get_lr(), _get_tk())
-
-    matches: list[dict] = []
-    for lr in lr_banks:
-        lr_name = lr.get("description") or lr.get("locationName") or ""
-        best_tk = None
-        best_score = 0.0
-        for tk in tk_candidates:
-            score = max(
-                calculate_location_similarity(lr_name, tk.get("location_name")),
-                calculate_location_similarity(lr_name, tk.get("payer_name")),
-            )
-            if score > best_score:
-                best_score = score
-                best_tk = tk
-
-        if best_tk and best_score >= similarity_threshold:
-            matches.append({
-                "lightremit": lr,
-                "transferku": best_tk,
-                "similarity_score": round(best_score, 3),
-                "matched_name": lr_name,
-            })
-
-    return matches
-
 def _format_error_message(lr_err: str | None = None, tk_err: str | None = None) -> str:
+    if lr_err and "service charge is not defined" in lr_err.lower():
+        return "the amount is too high or too low"
     errs = [str(e).strip() for e in [lr_err, tk_err] if e and str(e).strip()]
     return " | ".join(errs) if errs else "Rate not available"
 
@@ -846,14 +539,11 @@ get_rate = get_direct_rate
 # ---------------------------------------------------------------------------
 # relation_catalogues.json — loaded once at import time
 # ---------------------------------------------------------------------------
-import json as _json
-import pathlib as _pathlib
-
-_CATALOGUES_PATH = _pathlib.Path(__file__).parent.parent / "utils" / "relation_catalogues.json"
+_CATALOGUES_PATH = Path(__file__).parent.parent / "utils" / "relation_catalogues.json"
 _RELATION_CATALOGUES: dict = {}
 try:
     with open(_CATALOGUES_PATH, "r", encoding="utf-8") as _f:
-        _RELATION_CATALOGUES = _json.load(_f)
+        _RELATION_CATALOGUES = json.load(_f)
 except Exception as _e:
     print(f"[WARN] Could not load relation_catalogues.json: {_e}")
 
@@ -933,7 +623,7 @@ async def get_transferku_purpose_of_remittance(
         # If transaction_type is not specified, collect all unique purpose values across transaction types
         raw_purposes: list[str] = []
         seen: set[str] = set()
-        for tx_type, tx_info in transaction_types.items():
+        for _, tx_info in transaction_types.items():
             if isinstance(tx_info, dict):
                 for val in tx_info.get("purpose_of_remittance_values_accepted", []):
                     if val not in seen:
@@ -1058,7 +748,7 @@ def extract_transferku_locations(
             continue
 
         has_locations = False
-        for tx_key, tx_val in types_to_check.items():
+        for _, tx_val in types_to_check.items():
             if not isinstance(tx_val, dict):
                 continue
             for loc in tx_val.get("location_detail", []):
@@ -1369,7 +1059,6 @@ async def _build_locations(
     }
 
 
-logger = logging.getLogger(__name__)
 
 LOCATIONS_TTL = 6 * 3600             # fresh copy: both providers answered
 LOCATIONS_PARTIAL_TTL = 120          # one provider failed: retry soon

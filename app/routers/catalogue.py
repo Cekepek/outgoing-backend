@@ -1,6 +1,5 @@
 from app.services.catalogueServices import enrich_catalogue
 from app.services.catalogueServices import (
-    best_bank_for_country,
     fetch_locations_from_both,
     get_direct_rate,
     get_transferku_business_relation,

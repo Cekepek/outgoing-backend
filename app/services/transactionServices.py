@@ -1,8 +1,5 @@
-import os
 import random
 import string
-import time
-import uuid
 from datetime import date, datetime
 from typing import Any, Optional
 
@@ -18,7 +15,6 @@ from app.schemas import (
     SendTransactionRequest,
     TransferkuBusinessCustomerRequest,
     TransferkuCustomerRequest,
-    TransferkuCustomerResponse,
 )
 from app.services.catalogueServices import fetch_payers_for_country
 from app.services.schemasService import build_lightremit_payload
@@ -27,23 +23,6 @@ from app.utils.signature import build_request, generate_agent_txn_id
 
 # In-memory fallback cache for customer_id
 CUSTOMER_ID_CACHE: dict[str, str] = {}
-
-
-def generate_uuidv7() -> str:
-    """
-    Generates a UUIDv7 string according to RFC 9562:
-    - 48 bits: Unix timestamp in milliseconds
-    - 4 bits: Version 7 (0b0111)
-    - 12 bits: Random sequence
-    - 2 bits: Variant RFC 4122 (0b10)
-    - 62 bits: Random sequence
-    """
-    ms = int(time.time() * 1000)
-    rand_bytes = bytearray(os.urandom(16))
-    rand_bytes[0:6] = ms.to_bytes(6, byteorder="big")
-    rand_bytes[6] = (rand_bytes[6] & 0x0F) | 0x70
-    rand_bytes[8] = (rand_bytes[8] & 0x3F) | 0x80
-    return str(uuid.UUID(bytes=bytes(rand_bytes)))
 
 
 def generate_transferku_external_id() -> str:
@@ -278,7 +257,6 @@ async def create_sender(
                 sender = get_sender_from_db(db_session, sender_id=sender_id, user_id=user_id)
 
     external_id = kwargs.get("external_id") or generate_transferku_external_id()
-    now_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
     if sender is not None:
         sender_id_val = sender.id
@@ -1116,11 +1094,3 @@ async def send_transaction(
         res = await send_lightremit_transaction(req, sender=sender, client=client, **kwargs)
         print("res: ", res)
         return res, "LIGHTREMIT"
-
-
-def get_transaction_status():
-    pass
-
-
-def get_transaction_history():
-    pass
