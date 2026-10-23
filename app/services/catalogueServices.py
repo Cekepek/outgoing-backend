@@ -107,14 +107,27 @@ def enrich_catalogue(catalogue_type: str, raw_result: list[dict]) -> list[dict]:
             }
             for item in raw_result
         ]
+
+    if catalogue_type in ("IDT", "ID_TYPE", "CUSTOMER_ID_TYPE"):
+        from app.services.idTypeService import to_transferku_id_type
         return [
             {
-                "value": item["data"],
-                "description": item["value"],
+                "value": item.get("data") or item.get("value"),
+                "description": item.get("value") or item.get("description", ""),
+                "canonical_id_type": to_transferku_id_type(item.get("data")),
                 "optionalField": item.get("optionalField", ""),
             }
             for item in raw_result
         ]
+
+    return [
+        {
+            "value": item.get("data") or item.get("value"),
+            "description": item.get("value") or item.get("description", ""),
+            "optionalField": item.get("optionalField", ""),
+        }
+        for item in raw_result
+    ]
 
 async def fetch_bank_list(payout_country: str, payment_mode: str = "B") -> list[dict]:
     try:
@@ -717,6 +730,24 @@ def get_transferku_business_relation() -> list[dict[str, str]]:
         for item in raw_list
         if isinstance(item, dict) and "value" in item and "description" in item
     ]
+
+
+def get_transferku_customer_id_types() -> list[dict[str, str]]:
+    """Return Transferku customer ID type catalogue mapped with value, label, and description."""
+    raw_list = _RELATION_CATALOGUES.get("customer_id_type", [])
+    if raw_list:
+        return [
+            {
+                "value": item["value"],
+                "label": item["description"],
+                "description": item["description"],
+            }
+            for item in raw_list
+            if isinstance(item, dict) and "value" in item and "description" in item
+        ]
+    from app.services.idTypeService import get_canonical_id_types
+    return get_canonical_id_types()
+
 
 
 def extract_transferku_locations(

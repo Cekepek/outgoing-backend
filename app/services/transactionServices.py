@@ -17,6 +17,7 @@ from app.schemas import (
     TransferkuCustomerRequest,
 )
 from app.services.catalogueServices import fetch_payers_for_country
+from app.services.idTypeService import to_transferku_id_type
 from app.services.schemasService import build_lightremit_payload
 from app.utils.redis import redis_client
 from app.utils.signature import build_request, generate_agent_txn_id
@@ -30,7 +31,7 @@ def generate_transferku_external_id() -> str:
     Generates a unique 24-digit external ID (timestamp YYYYMMDDHHMMSS + 10 random digits).
     Example: '202512180000002841111254'
     """
-    return datetime.now().strftime("%Y%m%d%H%M%S") + "".join(random.choices(string.digits, k=10))
+    return datetime.now().strftime("%Y%m%d%H%M%S") + "".join(random.choices(string.digits, k=6))
 
 
 def _format_date(d: Any) -> str:
@@ -313,7 +314,7 @@ async def create_sender(
                 "date_of_birth": _format_date(sender.sender_date_of_birth),
                 "nationality_country_iso_code": sender.sender_nationality or sender.sender_country or "IDN",
                 "country_of_birth_iso_code": sender.sender_nationality or sender.sender_country or "IDN",
-                "id_type": sender.sender_id_type or "NATIONAL_ID",
+                "id_type": to_transferku_id_type(sender.sender_id_type),
                 "id_number": sender.sender_id_number or "",
                 "id_country_iso_code": sender.sender_id_issue_country or sender.sender_country or "IDN",
                 "id_delivery_date": _format_date(sender.sender_id_issue_date),
@@ -552,7 +553,7 @@ async def create_beneficiary(
                 "gender": _map_gender(kwargs.get("gender") or getattr(req, "receiver_gender", None) or "MALE"),
                 "date_of_birth": _format_date(req.receiver_date_of_birth),
                 "nationality_country_iso_code": req.receiver_nationality or req.receiver_country or "IDN",
-                "id_type": req.receiver_id_type or "NATIONAL_ID",
+                "id_type": to_transferku_id_type(req.receiver_id_type),
                 "id_number": req.receiver_id_number or "",
                 "id_country_iso_code": getattr(req, "receiver_id_issue_country", None) or req.receiver_country or "AUS",
                 "address": req.receiver_address or "",
@@ -641,7 +642,7 @@ async def create_beneficiary(
                 "gender": _map_gender(req_dict.get("gender") or req_dict.get("receiver_gender", "MALE")),
                 "date_of_birth": _format_date(req_dict.get("date_of_birth") or req_dict.get("receiver_date_of_birth", "")),
                 "nationality_country_iso_code": req_dict.get("nationality_country_iso_code") or req_dict.get("receiver_nationality", "IDN"),
-                "id_type": req_dict.get("id_type") or req_dict.get("receiver_id_type", "NATIONAL_ID"),
+                "id_type": to_transferku_id_type(req_dict.get("id_type") or req_dict.get("receiver_id_type")),
                 "id_number": req_dict.get("id_number") or req_dict.get("receiver_id_number", ""),
                 "id_country_iso_code": req_dict.get("id_country_iso_code") or req_dict.get("receiver_id_issue_country") or req_dict.get("receiver_country", "AUS"),
                 "address": req_dict.get("address") or req_dict.get("receiver_address", ""),
@@ -698,7 +699,7 @@ async def create_beneficiary(
                 "gender": _map_gender(kwargs.get("gender", "MALE")),
                 "date_of_birth": _format_date(kwargs.get("date_of_birth", "")),
                 "nationality_country_iso_code": kwargs.get("nationality_country_iso_code", "IDN"),
-                "id_type": kwargs.get("id_type", "NATIONAL_ID"),
+                "id_type": to_transferku_id_type(kwargs.get("id_type")),
                 "id_number": kwargs.get("id_number", ""),
                 "id_country_iso_code": kwargs.get("id_country_iso_code", "AUS"),
                 "address": kwargs.get("address", ""),

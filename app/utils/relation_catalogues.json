@@ -56,5 +56,22 @@
     { "value": "THIRD_PARTY", "description": "Third Party" },
     { "value": "AFFILIATED_ENTITY", "description": "Affiliated Entity" },
     { "value": "AFFILIATED_BUSINESS", "description": "Affiliated Business" }
+  ],
+  "customer_id_type": [
+    { "value": "PASSPORT", "description": "Passport" },
+    { "value": "NATIONAL_ID", "description": "National Identification Card" },
+    { "value": "DRIVING_LICENSE", "description": "Driving License" },
+    { "value": "SOCIAL_SECURITY", "description": "Social Security Card/Number" },
+    { "value": "TAX_ID", "description": "Tax Payer Identification Card/Number" },
+    { "value": "SENIOR_CITIZEN_ID", "description": "Senior Citizen Identification Card" },
+    { "value": "BIRTH_CERTIFICATE", "description": "Birth Certificate" },
+    { "value": "VILLAGE_ELDER_ID", "description": "Village Elder Identification Card" },
+    { "value": "RESIDENT_CARD", "description": "Permanent Residency Identification Card" },
+    { "value": "ALIEN_REGISTRATION", "description": "Alien Registration Certificate/Card" },
+    { "value": "PAN_CARD", "description": "PAN Card" },
+    { "value": "VOTERS_ID", "description": "Voter’s Identification Card" },
+    { "value": "HEALTH_CARD", "description": "Health Insurance Card/Number" },
+    { "value": "EMPLOYER_ID", "description": "Employer Identification Card" },
+    { "value": "OTHER", "description": "Others" }
   ]
 }

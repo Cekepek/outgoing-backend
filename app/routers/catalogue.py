@@ -6,6 +6,7 @@ from app.services.catalogueServices import (
     get_transferku_purpose_of_remittance,
     get_transferku_relation,
     get_transferku_source_of_fund,
+    get_transferku_customer_id_types,
 )
 from typing import Any, Optional
 from fastapi import APIRouter, HTTPException, Body
@@ -287,4 +288,23 @@ async def get_transferku_source_of_fund_get():
     except Exception as e:
         print(f"[ERROR get_transferku_source_of_fund] {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/get_transferku_id_type", response_model=BaseResponse[list[dict[str, str]]])
+@router.get("/get_transferku_id_types", response_model=BaseResponse[list[dict[str, str]]])
+@router.get("/get_customer_id_types", response_model=BaseResponse[list[dict[str, str]]])
+@router.post("/get_transferku_id_type", response_model=BaseResponse[list[dict[str, str]]])
+@router.post("/get_transferku_id_types", response_model=BaseResponse[list[dict[str, str]]])
+@router.post("/get_customer_id_types", response_model=BaseResponse[list[dict[str, str]]])
+async def get_customer_id_types_endpoint():
+    try:
+        data = get_transferku_customer_id_types()
+        return BaseResponse(
+            status="success",
+            message="Data fetched successfully",
+            data=data,
+        )
+    except Exception as e:
+        print(f"[ERROR get_customer_id_types] {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
