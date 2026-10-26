@@ -561,7 +561,7 @@ async def create_beneficiary(
                 "province_state": req.receiver_state or "",
                 "postal_code": req.receiver_zip_code or "",
                 "country_iso_code": req.receiver_country or "AUS",
-                "msisdn": req.receiver_contact_number or "",
+                "msisdn": getattr(req, "msisdn", None) or req.receiver_contact_number or "",
                 "email": req.receiver_email or "",
                 "occupation": req.receiver_occupation or "Civil Servant",
                 "source_of_funds": getattr(req, "sender_source_of_fund", None) or kwargs.get("source_of_funds", "SALARY"),
@@ -763,6 +763,53 @@ async def create_beneficiary(
     return data
 
 
+def _format_credit_party_dict(
+    data: dict[str, Any],
+    field_pool: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+
+    # If caller already passed structured type and value, preserve and augment
+    if "type" in data and "value" in data:
+        formatted = dict(data)
+    else:
+        formatted = {}
+        found_key = None
+        target_keys = ("bank_account_number", "account_number", "msisdn", "msidn", "card_number", "iban")
+        for k in target_keys:
+            if k in data and data[k] is not None and data[k] != "":
+                found_key = k
+                type_name = "msisdn" if k == "msidn" else k
+                formatted["type"] = type_name
+                formatted["value"] = str(data[k])
+                break
+
+        if not found_key and field_pool:
+            for k in target_keys:
+                if field_pool.get(k):
+                    found_key = k
+                    type_name = "msisdn" if k == "msidn" else k
+                    formatted["type"] = type_name
+                    formatted["value"] = str(field_pool[k])
+                    break
+
+        for k, v in data.items():
+            if k != found_key and v is not None and v != "":
+                formatted[k] = v
+
+    # Attach swift_bic_code if present in field_pool and not already in formatted for bank accounts
+    if (
+        field_pool
+        and "swift_bic_code" not in formatted
+        and field_pool.get("swift_bic_code")
+        and formatted.get("type") in ("bank_account_number", "account_number", "iban")
+    ):
+        formatted["swift_bic_code"] = field_pool["swift_bic_code"]
+
+    return formatted
+
+
 def build_transferku_credit_party_identifier(
     req: SendTransactionRequest,
     payer: Optional[dict[str, Any]] = None,
@@ -771,35 +818,12 @@ def build_transferku_credit_party_identifier(
 ) -> dict[str, Any]:
     """
     Dynamically builds the credit_party_identifier payload to match Transferku's
-    credit_party_identifiers_accepted for the specific payer and transaction type.
+    credit_party_identifiers_accepted for the specific payer and transaction type,
+    formatting primary identifiers with 'type' and 'value'.
     """
-    # 1. If caller supplied an explicit credit_party_identifier dict, prune null/empty and use it
-    if req.credit_party_identifier and isinstance(req.credit_party_identifier, dict):
-        cleaned = {k: v for k, v in req.credit_party_identifier.items() if v is not None and v != ""}
-        if cleaned:
-            return cleaned
-
     tx_type = (transaction_type or getattr(req, "transaction_type", None) or "C2C").strip().upper()
 
-    # 2. Resolve accepted_identifiers from payer object if not explicitly provided
-    if accepted_identifiers is None and payer:
-        tx_configs = payer.get("transaction_types", {})
-        tx_config = tx_configs.get(tx_type) or tx_configs.get("C2C")
-        if not tx_config and tx_configs:
-            tx_config = next(iter(tx_configs.values()), {})
-        if isinstance(tx_config, dict):
-            accepted_identifiers = tx_config.get("credit_party_identifiers_accepted", [])
-
-    # Normalize accepted_identifiers into a list of candidate combinations
-    # Handles both flat list ["bank_account_number", "location_detail"] and nested list [["msisdn"]]
-    combinations: list[list[str]] = []
-    if accepted_identifiers:
-        if all(isinstance(x, str) for x in accepted_identifiers):
-            combinations = [accepted_identifiers]
-        elif all(isinstance(x, list) for x in accepted_identifiers):
-            combinations = accepted_identifiers
-
-    # 3. Resolve location_detail if applicable
+    # Resolve location_detail if applicable
     loc_id = req.location_id or ""
     loc_name = req.location_name or req.bank_name or ""
 
@@ -823,7 +847,7 @@ def build_transferku_credit_party_identifier(
             "locationName": loc_name or loc_id,
         }
 
-    # 4. Map potential request attributes to Transferku identifier field names
+    # Map potential request attributes to Transferku identifier field names
     additional = req.additional_info or {}
     card_number = (
         getattr(req, "card_number", None)
@@ -836,11 +860,12 @@ def build_transferku_credit_party_identifier(
     msisdn = (
         getattr(req, "msisdn", None)
         or additional.get("msisdn")
+        or additional.get("msidn")
         or req.receiver_wallet_id_number
         or req.receiver_contact_number
     )
 
-    bank_account_number = req.bank_account_number or additional.get("bank_account_number")
+    bank_account_number = req.bank_account_number or additional.get("bank_account_number") or additional.get("account_number")
     bank_branch_name = (
         req.bank_branch_name
         or req.bank_branch_code
@@ -853,10 +878,11 @@ def build_transferku_credit_party_identifier(
     field_pool: dict[str, Any] = {
         "card_number": card_number,
         "msisdn": msisdn,
+        "msidn": msisdn,
         "bank_account_number": bank_account_number,
         "account_number": bank_account_number,
         "bank_branch_name": bank_branch_name,
-        "bsb_code":bank_branch_name,
+        "bsb_code": bank_branch_name,
         "bank_branch_code": bank_branch_name,
         "swift_bic_code": swift_bic_code,
         "swift_code": swift_bic_code,
@@ -870,7 +896,30 @@ def build_transferku_credit_party_identifier(
         if k not in field_pool and v is not None and v != "":
             field_pool[k] = v
 
-    # 5. Build identifier based on accepted combination
+    # 1. If caller supplied an explicit credit_party_identifier dict, format and use it
+    if req.credit_party_identifier and isinstance(req.credit_party_identifier, dict):
+        cleaned = {k: v for k, v in req.credit_party_identifier.items() if v is not None and v != ""}
+        if cleaned:
+            return _format_credit_party_dict(cleaned, field_pool)
+
+    # 2. Resolve accepted_identifiers from payer object if not explicitly provided
+    if accepted_identifiers is None and payer:
+        tx_configs = payer.get("transaction_types", {})
+        tx_config = tx_configs.get(tx_type) or tx_configs.get("C2C")
+        if not tx_config and tx_configs:
+            tx_config = next(iter(tx_configs.values()), {})
+        if isinstance(tx_config, dict):
+            accepted_identifiers = tx_config.get("credit_party_identifiers_accepted", [])
+
+    # Normalize accepted_identifiers into a list of candidate combinations
+    combinations: list[list[str]] = []
+    if accepted_identifiers:
+        if all(isinstance(x, str) for x in accepted_identifiers):
+            combinations = [accepted_identifiers]
+        elif all(isinstance(x, list) for x in accepted_identifiers):
+            combinations = accepted_identifiers
+
+    # 3. Build identifier based on accepted combination
     if combinations:
         for combo in combinations:
             resolved_combo = {}
@@ -883,15 +932,15 @@ def build_transferku_credit_party_identifier(
                     all_matched = False
                     break
             if all_matched:
-                return resolved_combo
+                return _format_credit_party_dict(resolved_combo, field_pool)
 
         # Fallback: take the first combination and fill with available fields
         first_combo = combinations[0]
         partial = {f: field_pool[f] for f in first_combo if field_pool.get(f) is not None and field_pool[f] != ""}
         if partial:
-            return partial
+            return _format_credit_party_dict(partial, field_pool)
 
-    # 6. Generic fallback if payer or accepted list is not available
+    # 4. Generic fallback if payer or accepted list is not available
     fallback: dict[str, Any] = {}
     if field_pool.get("bank_account_number"):
         fallback["bank_account_number"] = field_pool["bank_account_number"]
@@ -910,7 +959,7 @@ def build_transferku_credit_party_identifier(
                 fallback[k] = field_pool[k]
                 break
 
-    return fallback
+    return _format_credit_party_dict(fallback, field_pool)
 
 
 async def send_transferku_transaction(

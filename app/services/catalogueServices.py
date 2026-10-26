@@ -750,19 +750,35 @@ def get_transferku_customer_id_types() -> list[dict[str, str]]:
 
 
 
+def _flatten_identifiers(raw: Any) -> list[str]:
+    if not raw:
+        return []
+    flat: list[str] = []
+    if isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, list):
+                for sub in item:
+                    if isinstance(sub, str) and sub not in flat:
+                        flat.append(sub)
+            elif isinstance(item, str) and item not in flat:
+                flat.append(item)
+    elif isinstance(raw, str):
+        flat.append(raw)
+    return flat
+
+
 def extract_transferku_locations(
     payers: list[dict],
     transaction_type: str | None = None,
 ) -> list[dict]:
     """
-    Extracts location details from Transferku payers.
-    If transaction_type is provided (e.g. 'C2C', 'C2B', 'B2C', 'B2B'),
-    extracts location_detail for that specific transaction type.
-    Otherwise, extracts and deduplicates location_detail across all transaction types.
-    Populates optionalField with payer_id.
+    Extracts location details from Transferku payers for the requested transaction type.
+    Includes credit_party_identifiers_accepted for that transaction type.
     """
     locations: list[dict] = []
     seen_ids: set[str] = set()
+
+    target_tx = (transaction_type or "C2C").upper()
 
     for payer in payers:
         payer_id = str(payer.get("payer_id") or "")
@@ -770,38 +786,39 @@ def extract_transferku_locations(
         if not isinstance(tx_types, dict):
             continue
 
-        if transaction_type:
-            types_to_check = {transaction_type: tx_types.get(transaction_type)} if transaction_type in tx_types else {}
-        else:
-            types_to_check = tx_types
-
-        if not types_to_check:
+        tx_cfg = tx_types.get(target_tx)
+        if not isinstance(tx_cfg, dict):
             continue
 
+        identifiers = _flatten_identifiers(tx_cfg.get("credit_party_identifiers_accepted")) or ["bank_account_number"]
+
         has_locations = False
-        for _, tx_val in types_to_check.items():
-            if not isinstance(tx_val, dict):
-                continue
-            for loc in tx_val.get("location_detail", []):
-                has_locations = True
-                loc_id = loc.get("locationId")
-                loc_name = loc.get("locationName") or payer.get("name", "")
-                if loc_id and loc_id not in seen_ids:
-                    seen_ids.add(loc_id)
+        for loc in tx_cfg.get("location_detail", []):
+            has_locations = True
+            loc_id = loc.get("locationId")
+            loc_name = loc.get("locationName") or payer.get("name", "")
+            if loc_id and loc_id not in seen_ids:
+                seen_ids.add(loc_id)
+                locations.append({
+                    "value": loc.get("locationId"),
+                    "description": loc_name,
+                    "optionalField": payer_id or str(loc.get("optionalField", "")),
+                    "payer_id": payer_id,
+                    "transaction_type": target_tx,
+                    "credit_party_identifiers_accepted": identifiers,
+                })
+            elif not loc_id and loc_name:
+                key = (payer_id, loc_name)
+                if key not in seen_ids:
+                    seen_ids.add(key)
                     locations.append({
-                        "value": loc.get("locationId"),
+                        "value": loc.get("value") or payer_id,
                         "description": loc_name,
                         "optionalField": payer_id or str(loc.get("optionalField", "")),
+                        "payer_id": payer_id,
+                        "transaction_type": target_tx,
+                        "credit_party_identifiers_accepted": identifiers,
                     })
-                elif not loc_id and loc_name:
-                    key = (payer_id, loc_name)
-                    if key not in seen_ids:
-                        seen_ids.add(key)
-                        locations.append({
-                            "value": loc.get("value") or payer_id,
-                            "description": loc_name,
-                            "optionalField": payer_id or str(loc.get("optionalField", "")),
-                        })
 
         if not has_locations and payer.get("name"):
             payer_name = str(payer.get("name") or "").strip()
@@ -813,30 +830,45 @@ def extract_transferku_locations(
                         "value": payer_id,
                         "description": payer_name,
                         "optionalField": payer_id,
+                        "payer_id": payer_id,
+                        "transaction_type": target_tx,
+                        "credit_party_identifiers_accepted": identifiers,
                     })
 
     return locations
 
-def merge_locations(lr: list[dict], tk: list[dict], mapping: dict[str, str]) -> list[dict]:
+def merge_locations(
+    lr: list[dict],
+    tk: list[dict],
+    mapping: dict[str, str],
+    transaction_type: str = "C2C",
+) -> list[dict]:
     """mapping: transferku location_id -> lightremit location_id (curated)."""
     merged: dict[str, dict] = {}
+    target_tx = (transaction_type or "C2C").upper()
+
     for loc in lr:
         merged[loc["value"]] = {
             "canonical_id": loc["value"],
             "name": loc["description"],
+            "credit_party_identifiers_accepted": ["bank_account_number"],
             "providers": {"lightremit": {"location_id": loc["value"]}},
         }
     for loc in tk:
         key = mapping.get(loc["value"]) or loc["value"]   # unmapped -> its own entry
+        identifiers = loc.get("credit_party_identifiers_accepted") or ["bank_account_number"]
         entry = merged.setdefault(key, {
             "canonical_id": key,
             "name": loc["description"],
+            "credit_party_identifiers_accepted": identifiers,
             "providers": {},
         })
+        entry["credit_party_identifiers_accepted"] = identifiers
         entry["providers"]["transferku"] = {
             "location_id": loc["value"],
-            "payer_id": loc["optionalField"],
-            "transaction_type": "C2C",
+            "payer_id": loc.get("payer_id") or loc["optionalField"],
+            "transaction_type": loc.get("transaction_type") or target_tx,
+            "credit_party_identifiers_accepted": identifiers,
         }
     return list(merged.values())
 
@@ -984,6 +1016,10 @@ def enrich_locations_with_major_banks(
                         if p_name not in providers:
                             providers[p_name] = dict(p_cfg)
                     loc["providers"] = providers
+                    if "transferku" in all_banks_provider_template:
+                        tk_tpl = all_banks_provider_template["transferku"]
+                        if "credit_party_identifiers_accepted" in tk_tpl:
+                            loc["credit_party_identifiers_accepted"] = tk_tpl["credit_party_identifiers_accepted"]
 
                 matched_major_indices.add(idx)
                 break
@@ -1005,11 +1041,13 @@ def enrich_locations_with_major_banks(
             for p_name, p_cfg in all_banks_provider_template.items()
         }
 
+        tk_tpl = providers.get("transferku") or {}
         new_entry = {
             "canonical_id": canonical_id,
             "name": major["name"],
             "swift": swift_code,
             "swift_code": swift_code,
+            "credit_party_identifiers_accepted": tk_tpl.get("credit_party_identifiers_accepted", ["bank_account_number"]),
             "providers": providers,
         }
         new_locations.append(new_entry)
@@ -1077,8 +1115,16 @@ async def _build_locations(
         for row in candidates
         if row["status"] == "approved"
     }
-    merged_locations = merge_locations(lr_locations, tk_locations, mapping)
+    merged_locations = merge_locations(
+        lr_locations, tk_locations, mapping, transaction_type=transaction_type or "C2C"
+    )
     enriched_locations = enrich_locations_with_major_banks(merged_locations, country_iso)
+
+    for loc in enriched_locations:
+        if "credit_party_identifiers_accepted" not in loc:
+            tk_prov = loc.get("providers", {}).get("transferku", {})
+            loc["credit_party_identifiers_accepted"] = tk_prov.get("credit_party_identifiers_accepted", ["bank_account_number"])
+
     return {
         "iso_code": country_iso,
         "locations": enriched_locations,
