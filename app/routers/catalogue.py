@@ -48,7 +48,7 @@ async def get_catalogue(catalogue_request: CatalogueRequest):
             "additionalField3": catalogue_request.additionalField3,
         })
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=60) as client:
             response = await client.post(url, json=body, headers={"Authorization": signature})
 
         payload = response.json()  # parse once

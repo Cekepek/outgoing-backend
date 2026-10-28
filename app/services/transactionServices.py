@@ -521,8 +521,6 @@ async def create_beneficiary(
     for k, v in kwargs.items():
         if k in body and k not in ("external_id", "role"):
             body[k] = v
-
-    print("=======", body)
     data = await _post_transferku_customer(body, client=client, caller_name="create_beneficiary")
 
     customer_id = data.get("customer_id") or body.get("customer_id")
@@ -662,8 +660,8 @@ def build_transferku_credit_party_identifier(
         # "bank_branch_name": bank_branch_name,
         "bsb_code": bank_branch_name,
         # "bank_branch_code": bank_branch_name,
-        "swift_bic_code": swift_bic_code,
-        "swift_code": swift_bic_code,
+        # "swift_bic_code": swift_bic_code,
+        # "swift_code": swift_bic_code,
         "swift": swift_bic_code,
         "iban": iban,
         "location_detail": location_detail_payload,
