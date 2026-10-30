@@ -1,0 +1,1276 @@
+{
+  "AUS": {
+    "total_locations": 5,
+    "errors": {
+      "lightremit": null,
+      "transferku": null
+    },
+    "payers": {
+      "648535": {
+        "payer_id": "648535",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "AUSALL",
+          "name": "ALL AUSTRALIAN BANK",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "bsb_code",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "AUSALL"
+            },
+            "transferku": {
+              "location_id": "AUSALL",
+              "payer_id": "648535",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "bsb_code",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "ALL AUSTRALIAN BANK",
+        "count": 5,
+        "credit_party_identifiers_accepted": [
+          "bank_account_number",
+          "bsb_code",
+          "location_detail"
+        ]
+      },
+      "LR_AUSALL": {
+        "payer_id": "AUSALL",
+        "location_id": "AUSALL",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "AUSALL",
+          "name": "ALL AUSTRALIAN BANK",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "bsb_code",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "AUSALL"
+            },
+            "transferku": {
+              "location_id": "AUSALL",
+              "payer_id": "648535",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "bsb_code",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "ALL AUSTRALIAN BANK",
+        "count": 1
+      },
+      "LR_AUSAMP": {
+        "payer_id": "AUSAMP",
+        "location_id": "AUSAMP",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "AUSAMP",
+          "name": "AMP BANK LIMITED",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "bsb_code",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "AUSAMP"
+            },
+            "transferku": {
+              "location_id": "AUSAMP",
+              "payer_id": "648535",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "bsb_code",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "AMP BANK LIMITED",
+        "count": 1
+      },
+      "LR_AUSBEY": {
+        "payer_id": "AUSBEY",
+        "location_id": "AUSBEY",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "AUSBEY",
+          "name": "BEYOND BANK",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "bsb_code",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "AUSBEY"
+            },
+            "transferku": {
+              "location_id": "AUSBEY",
+              "payer_id": "648535",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "bsb_code",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "BEYOND BANK",
+        "count": 1
+      },
+      "LR_AUSCIT": {
+        "payer_id": "AUSCIT",
+        "location_id": "AUSCIT",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "AUSCIT",
+          "name": "CITIBANK N.A.",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "bsb_code",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "AUSCIT"
+            },
+            "transferku": {
+              "location_id": "AUSCIT",
+              "payer_id": "648535",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "bsb_code",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "CITIBANK N.A.",
+        "count": 1
+      },
+      "LR_AUSCOM": {
+        "payer_id": "AUSCOM",
+        "location_id": "AUSCOM",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "AUSCOM",
+          "name": "COMMONWEALTH BANK OF AUSTRALIA SYDNEY",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "bsb_code",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "AUSCOM"
+            },
+            "transferku": {
+              "location_id": "AUSCOM",
+              "payer_id": "648535",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "bsb_code",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "COMMONWEALTH BANK OF AUSTRALIA SYDNEY",
+        "count": 1
+      }
+    }
+  },
+  "CHN": {
+    "total_locations": 4,
+    "errors": {
+      "lightremit": null,
+      "transferku": null
+    },
+    "payers": {
+      "648536": {
+        "payer_id": "648536",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "CHNALL",
+          "name": "ALL BANKS",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "CHNALL"
+            },
+            "transferku": {
+              "location_id": "CHNALL",
+              "payer_id": "648536",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "ALL BANKS",
+        "count": 2,
+        "credit_party_identifiers_accepted": [
+          "bank_account_number",
+          "location_detail"
+        ]
+      },
+      "LR_CHNALL": {
+        "payer_id": "CHNALL",
+        "location_id": "CHNALL",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "CHNALL",
+          "name": "ALL BANKS",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "CHNALL"
+            },
+            "transferku": {
+              "location_id": "CHNALL",
+              "payer_id": "648536",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "ALL BANKS",
+        "count": 1
+      },
+      "LR_CHNBAN": {
+        "payer_id": "CHNBAN",
+        "location_id": "CHNBAN",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "CHNBAN",
+          "name": "BANK OF CHINA",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "CHNBAN"
+            },
+            "transferku": {
+              "location_id": "CHNBAN",
+              "payer_id": "648536",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "BANK OF CHINA",
+        "count": 1
+      },
+      "45742391": {
+        "payer_id": "45742391",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "45742391",
+          "name": "UnionPay",
+          "credit_party_identifiers_accepted": [
+            "card_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "45742391",
+              "payer_id": "45742391",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "card_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "UnionPay",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "card_number"
+        ]
+      },
+      "45742392": {
+        "payer_id": "45742392",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "45742392",
+          "name": "Alipay",
+          "credit_party_identifiers_accepted": [
+            "msisdn"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "45742392",
+              "payer_id": "45742392",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "msisdn"
+              ]
+            }
+          }
+        },
+        "sample_name": "Alipay",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "msisdn"
+        ]
+      }
+    }
+  },
+  "EUR": {
+    "total_locations": 1,
+    "errors": {
+      "lightremit": null,
+      "transferku": "Payers not found"
+    },
+    "payers": {
+      "LR_EURALL01": {
+        "payer_id": "EURALL01",
+        "location_id": "EURALL01",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "EURALL01",
+          "name": "ALL EU BANKS SEPA",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "EURALL01"
+            }
+          }
+        },
+        "sample_name": "ALL EU BANKS SEPA",
+        "count": 1
+      }
+    }
+  },
+  "GBR": {
+    "total_locations": 1,
+    "errors": {
+      "lightremit": null,
+      "transferku": null
+    },
+    "payers": {
+      "7954481": {
+        "payer_id": "7954481",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "GBRALL",
+          "name": "ALL GBP BANKS",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "GBRALL"
+            },
+            "transferku": {
+              "location_id": "GBRALL",
+              "payer_id": "7954481",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "ALL GBP BANKS",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "bank_account_number",
+          "location_detail"
+        ]
+      },
+      "LR_GBRALL": {
+        "payer_id": "GBRALL",
+        "location_id": "GBRALL",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "GBRALL",
+          "name": "ALL GBP BANKS",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "GBRALL"
+            },
+            "transferku": {
+              "location_id": "GBRALL",
+              "payer_id": "7954481",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "ALL GBP BANKS",
+        "count": 1
+      }
+    }
+  },
+  "HKG": {
+    "total_locations": 21,
+    "errors": {
+      "lightremit": null,
+      "transferku": null
+    },
+    "payers": {
+      "LR_HKGABN": {
+        "payer_id": "HKGABN",
+        "location_id": "HKGABN",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "HKGABN",
+          "name": "ABN AMRO BANK N.V.",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "HKGABN"
+            }
+          }
+        },
+        "sample_name": "ABN AMRO BANK N.V.",
+        "count": 1
+      },
+      "1482": {
+        "payer_id": "1482",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "HKG_BKCHHKHH",
+          "name": "Bank of China (Hong Kong)",
+          "swift": "BKCHHKHH",
+          "swift_code": "BKCHHKHH",
+          "credit_party_identifiers_accepted": [
+            "swift",
+            "account_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "1482",
+              "payer_id": "1482",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "swift",
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "Bank of China (Hong Kong)",
+        "count": 17,
+        "credit_party_identifiers_accepted": [
+          "swift",
+          "account_number"
+        ]
+      },
+      "487": {
+        "payer_id": "487",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "487",
+          "name": "All Banks | LOCAL",
+          "credit_party_identifiers_accepted": [
+            "swift",
+            "account_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "487",
+              "payer_id": "487",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "swift",
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "All Banks | LOCAL",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "swift",
+          "account_number"
+        ]
+      },
+      "2102": {
+        "payer_id": "2102",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "2102",
+          "name": "All Banks | PROXY",
+          "credit_party_identifiers_accepted": [
+            "account_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "2102",
+              "payer_id": "2102",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "All Banks | PROXY",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "account_number"
+        ]
+      },
+      "4655": {
+        "payer_id": "4655",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "4655",
+          "name": "All Banks | SWIFT",
+          "credit_party_identifiers_accepted": [
+            "swift",
+            "account_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "4655",
+              "payer_id": "4655",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "swift",
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "All Banks | SWIFT",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "swift",
+          "account_number"
+        ]
+      }
+    }
+  },
+  "MYS": {
+    "total_locations": 3,
+    "errors": {
+      "lightremit": null,
+      "transferku": null
+    },
+    "payers": {
+      "684534": {
+        "payer_id": "684534",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "MYSAFF",
+          "name": "AFFIN BANK BERHAD",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "MYSAFF"
+            },
+            "transferku": {
+              "location_id": "MYSAFF",
+              "payer_id": "684534",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "AFFIN BANK BERHAD",
+        "count": 3,
+        "credit_party_identifiers_accepted": [
+          "bank_account_number",
+          "location_detail"
+        ]
+      },
+      "LR_MYSAFF": {
+        "payer_id": "MYSAFF",
+        "location_id": "MYSAFF",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "MYSAFF",
+          "name": "AFFIN BANK BERHAD",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "MYSAFF"
+            },
+            "transferku": {
+              "location_id": "MYSAFF",
+              "payer_id": "684534",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "AFFIN BANK BERHAD",
+        "count": 1
+      },
+      "LR_MYSAFFIN": {
+        "payer_id": "MYSAFFIN",
+        "location_id": "MYSAFFIN",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "MYSAFFIN",
+          "name": "AFFIN ISLAMIC BANK BERHAD",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "MYSAFFIN"
+            },
+            "transferku": {
+              "location_id": "MYSAFFIN",
+              "payer_id": "684534",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "AFFIN ISLAMIC BANK BERHAD",
+        "count": 1
+      },
+      "LR_MYSAL": {
+        "payer_id": "MYSAL",
+        "location_id": "MYSAL",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "MYSAL",
+          "name": "AL RAJHI BANK",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "MYSAL"
+            },
+            "transferku": {
+              "location_id": "MYSAL",
+              "payer_id": "684534",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "AL RAJHI BANK",
+        "count": 1
+      }
+    }
+  },
+  "PHL": {
+    "total_locations": 8,
+    "errors": {
+      "lightremit": null,
+      "transferku": null
+    },
+    "payers": {
+      "LR_PHLALLBA": {
+        "payer_id": "PHLALLBA",
+        "location_id": "PHLALLBA",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "PHLALLBA",
+          "name": "ALLBANK INC",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "PHLALLBA"
+            }
+          }
+        },
+        "sample_name": "ALLBANK INC",
+        "count": 1
+      },
+      "LR_PHLASI": {
+        "payer_id": "PHLASI",
+        "location_id": "PHLASI",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "PHLASI",
+          "name": "ASIA UNITED BANK",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "PHLASI"
+            }
+          }
+        },
+        "sample_name": "ASIA UNITED BANK",
+        "count": 1
+      },
+      "LR_PHLBAN": {
+        "payer_id": "PHLBAN",
+        "location_id": "PHLBAN",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "PHLBAN",
+          "name": "BANGKOK BANK PUBLIC CO., LTD",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "PHLBAN"
+            }
+          }
+        },
+        "sample_name": "BANGKOK BANK PUBLIC CO., LTD",
+        "count": 1
+      },
+      "LR_PHLBANOF": {
+        "payer_id": "PHLBANOF",
+        "location_id": "PHLBANOF",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "PHLBANOF",
+          "name": "BANK OF THE PHILIPPINE ISLANDS",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "PHLBANOF"
+            }
+          }
+        },
+        "sample_name": "BANK OF THE PHILIPPINE ISLANDS",
+        "count": 1
+      },
+      "9": {
+        "payer_id": "9",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "9",
+          "name": "All Banks | LOCAL",
+          "credit_party_identifiers_accepted": [
+            "swift",
+            "account_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "9",
+              "payer_id": "9",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "swift",
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "All Banks | LOCAL",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "swift",
+          "account_number"
+        ]
+      },
+      "1781": {
+        "payer_id": "1781",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "1781",
+          "name": "All Banks | CARD",
+          "credit_party_identifiers_accepted": [
+            "account_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "1781",
+              "payer_id": "1781",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "All Banks | CARD",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "account_number"
+        ]
+      },
+      "1860": {
+        "payer_id": "1860",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "1860",
+          "name": "All Banks | CASH",
+          "credit_party_identifiers_accepted": [
+            "account_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "1860",
+              "payer_id": "1860",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "All Banks | CASH",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "account_number"
+        ]
+      },
+      "1853": {
+        "payer_id": "1853",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "1853",
+          "name": "All Banks | WALLET",
+          "credit_party_identifiers_accepted": [
+            "wallet",
+            "account_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "1853",
+              "payer_id": "1853",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "wallet",
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "All Banks | WALLET",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "wallet",
+          "account_number"
+        ]
+      }
+    }
+  },
+  "SGP": {
+    "total_locations": 14,
+    "errors": {
+      "lightremit": null,
+      "transferku": null
+    },
+    "payers": {
+      "LR_SGPPOS5": {
+        "payer_id": "SGPPOS5",
+        "location_id": "SGPPOS5",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "SGPPOS5",
+          "name": "POSB BANK",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "SGPPOS5"
+            }
+          }
+        },
+        "sample_name": "POSB BANK",
+        "count": 1
+      },
+      "1253": {
+        "payer_id": "1253",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "SGP_CITISGSGGCB",
+          "name": "Citibank",
+          "swift": "CITISGSGGCB",
+          "swift_code": "CITISGSGGCB",
+          "credit_party_identifiers_accepted": [
+            "swift",
+            "account_number"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "SGPALL"
+            },
+            "transferku": {
+              "location_id": "1253",
+              "payer_id": "1253",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "swift",
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "Citibank",
+        "count": 8,
+        "credit_party_identifiers_accepted": [
+          "swift",
+          "account_number"
+        ]
+      },
+      "LR_SGPALL": {
+        "payer_id": "SGPALL",
+        "location_id": "SGPALL",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "SGP_CITISGSGGCB",
+          "name": "Citibank",
+          "swift": "CITISGSGGCB",
+          "swift_code": "CITISGSGGCB",
+          "credit_party_identifiers_accepted": [
+            "swift",
+            "account_number"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "SGPALL"
+            },
+            "transferku": {
+              "location_id": "1253",
+              "payer_id": "1253",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "swift",
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "Citibank",
+        "count": 8
+      },
+      "486": {
+        "payer_id": "486",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "486",
+          "name": "All Banks | LOCAL",
+          "credit_party_identifiers_accepted": [
+            "swift",
+            "account_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "486",
+              "payer_id": "486",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "swift",
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "All Banks | LOCAL",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "swift",
+          "account_number"
+        ]
+      },
+      "1784": {
+        "payer_id": "1784",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "1784",
+          "name": "All Banks | CARD",
+          "credit_party_identifiers_accepted": [
+            "account_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "1784",
+              "payer_id": "1784",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "All Banks | CARD",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "account_number"
+        ]
+      },
+      "1843": {
+        "payer_id": "1843",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "1843",
+          "name": "All Banks | PROXY",
+          "credit_party_identifiers_accepted": [
+            "account_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "1843",
+              "payer_id": "1843",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "All Banks | PROXY",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "account_number"
+        ]
+      },
+      "4884": {
+        "payer_id": "4884",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "4884",
+          "name": "All Banks | SWIFT",
+          "credit_party_identifiers_accepted": [
+            "swift",
+            "account_number"
+          ],
+          "providers": {
+            "transferku": {
+              "location_id": "4884",
+              "payer_id": "4884",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "swift",
+                "account_number"
+              ]
+            }
+          }
+        },
+        "sample_name": "All Banks | SWIFT",
+        "count": 1,
+        "credit_party_identifiers_accepted": [
+          "swift",
+          "account_number"
+        ]
+      }
+    }
+  },
+  "THA": {
+    "total_locations": 4,
+    "errors": {
+      "lightremit": null,
+      "transferku": null
+    },
+    "payers": {
+      "648533": {
+        "payer_id": "648533",
+        "agent": "TRANSFERKU",
+        "sample_location": {
+          "canonical_id": "THABAN01",
+          "name": "BANK OF AYUDHYA PUBLIC COMPANY LTD.",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "THABAN01"
+            },
+            "transferku": {
+              "location_id": "THABAN01",
+              "payer_id": "648533",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "BANK OF AYUDHYA PUBLIC COMPANY LTD.",
+        "count": 4,
+        "credit_party_identifiers_accepted": [
+          "bank_account_number",
+          "location_detail"
+        ]
+      },
+      "LR_THABAN01": {
+        "payer_id": "THABAN01",
+        "location_id": "THABAN01",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "THABAN01",
+          "name": "BANK OF AYUDHYA PUBLIC COMPANY LTD.",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "THABAN01"
+            },
+            "transferku": {
+              "location_id": "THABAN01",
+              "payer_id": "648533",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "BANK OF AYUDHYA PUBLIC COMPANY LTD.",
+        "count": 1
+      },
+      "LR_THAKAS": {
+        "payer_id": "THAKAS",
+        "location_id": "THAKAS",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "THAKAS",
+          "name": "KASIKORNBANK PUBLIC COMPANY LIMITED",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "THAKAS"
+            },
+            "transferku": {
+              "location_id": "THAKAS",
+              "payer_id": "648533",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "KASIKORNBANK PUBLIC COMPANY LIMITED",
+        "count": 1
+      },
+      "LR_THAKIA": {
+        "payer_id": "THAKIA",
+        "location_id": "THAKIA",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "THAKIA",
+          "name": "KIATNAKIN PHATRA BANK PUBLIC COMPANY LIMITED",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "THAKIA"
+            },
+            "transferku": {
+              "location_id": "THAKIA",
+              "payer_id": "648533",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "KIATNAKIN PHATRA BANK PUBLIC COMPANY LIMITED",
+        "count": 1
+      },
+      "LR_THASIAC2C": {
+        "payer_id": "THASIAC2C",
+        "location_id": "THASIAC2C",
+        "agent": "LIGHTREMIT",
+        "sample_location": {
+          "canonical_id": "THASIAC2C",
+          "name": "SIAM COMMERCIAL BANK PUBLIC COMPANY LTD",
+          "credit_party_identifiers_accepted": [
+            "bank_account_number",
+            "location_detail"
+          ],
+          "providers": {
+            "lightremit": {
+              "location_id": "THASIAC2C"
+            },
+            "transferku": {
+              "location_id": "THASIAC2C",
+              "payer_id": "648533",
+              "transaction_type": "C2C",
+              "credit_party_identifiers_accepted": [
+                "bank_account_number",
+                "location_detail"
+              ]
+            }
+          }
+        },
+        "sample_name": "SIAM COMMERCIAL BANK PUBLIC COMPANY LTD",
+        "count": 1
+      }
+    }
+  }
+}

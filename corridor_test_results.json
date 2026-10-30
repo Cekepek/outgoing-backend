@@ -1,0 +1,759 @@
+[
+  {
+    "country": "AUS",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "648535",
+    "name": "ALL AUSTRALIAN BANK",
+    "works": true,
+    "status_code": "90000",
+    "message": "DECLINED (transfer_id=01a18ab5-4751-71d2-b2ac-c94aac401047)",
+    "details": {
+      "transfer_id": "01a18ab5-4751-71d2-b2ac-c94aac401047",
+      "external_id": "20261030094818749263",
+      "quote_id": "01a18ab5-32f4-72ac-ae24-486d6d5fae37",
+      "transaction_type": "C2C",
+      "purpose_of_remittance": "FAMILY_SUPPORT",
+      "source_of_funds": "SALARY",
+      "beneficiary_relationship": "FAMILY",
+      "credit_party_identifier": {
+        "type": "bank_account_number",
+        "value": "123456789",
+        "bsb_code": "012345",
+        "location_detail": {
+          "locationId": "AUSALL",
+          "locationName": "ALL AUSTRALIAN BANK"
+        }
+      },
+      "sender_id": "01a18ab5-3b8f-709c-85f2-4f1d13e5b72f",
+      "beneficiary_id": "01a18ab5-441b-70c5-abe5-dd117bd89d02",
+      "callback_url": "https://client.com/webhook",
+      "additional_info": [],
+      "status": "90000",
+      "status_message": "DECLINED",
+      "created_at": "2026-10-30T02:48:18+00:00",
+      "error": "SENDER_IDENTITY_TYPE did not match."
+    }
+  },
+  {
+    "country": "AUS",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "AUSALL",
+    "name": "ALL AUSTRALIAN BANK",
+    "works": false,
+    "status_code": "1101",
+    "message": "Mandatory field (BankBranchName) is Blank",
+    "details": {
+      "code": "1101",
+      "agentSessionId": "1793328499",
+      "message": "Mandatory field (BankBranchName) is Blank"
+    }
+  },
+  {
+    "country": "AUS",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "AUSAMP",
+    "name": "AMP BANK LIMITED",
+    "works": false,
+    "status_code": "1101",
+    "message": "Mandatory field (BankBranchName) is Blank",
+    "details": {
+      "code": "1101",
+      "agentSessionId": "1793328500",
+      "message": "Mandatory field (BankBranchName) is Blank"
+    }
+  },
+  {
+    "country": "AUS",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "AUSBEY",
+    "name": "BEYOND BANK",
+    "works": false,
+    "status_code": "1101",
+    "message": "Mandatory field (BankBranchName) is Blank",
+    "details": {
+      "code": "1101",
+      "agentSessionId": "1793328500",
+      "message": "Mandatory field (BankBranchName) is Blank"
+    }
+  },
+  {
+    "country": "AUS",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "AUSCIT",
+    "name": "CITIBANK N.A.",
+    "works": false,
+    "status_code": "1101",
+    "message": "Mandatory field (BankBranchName) is Blank",
+    "details": {
+      "code": "1101",
+      "agentSessionId": "1793328500",
+      "message": "Mandatory field (BankBranchName) is Blank"
+    }
+  },
+  {
+    "country": "AUS",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "AUSCOM",
+    "name": "COMMONWEALTH BANK OF AUSTRALIA SYDNEY",
+    "works": false,
+    "status_code": "1101",
+    "message": "Mandatory field (BankBranchName) is Blank",
+    "details": {
+      "code": "1101",
+      "agentSessionId": "1793328500",
+      "message": "Mandatory field (BankBranchName) is Blank"
+    }
+  },
+  {
+    "country": "CHN",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "648536",
+    "name": "ALL BANKS",
+    "works": true,
+    "status_code": "90000",
+    "message": "DECLINED (transfer_id=01a18ab5-7740-736b-9d90-47420dcb75ce)",
+    "details": {
+      "transfer_id": "01a18ab5-7740-736b-9d90-47420dcb75ce",
+      "external_id": "20261030094830089631",
+      "quote_id": "01a18ab5-739d-72c3-9ee8-f284f00603be",
+      "transaction_type": "C2C",
+      "purpose_of_remittance": "FAMILY_SUPPORT",
+      "source_of_funds": "SALARY",
+      "beneficiary_relationship": "FAMILY",
+      "credit_party_identifier": {
+        "type": "bank_account_number",
+        "value": "6222021234567890123",
+        "location_detail": {
+          "locationId": "CHNALL",
+          "locationName": "ALL BANKS"
+        }
+      },
+      "sender_id": "01a18ab5-3b8f-709c-85f2-4f1d13e5b72f",
+      "beneficiary_id": "01a18ab5-743d-703d-aa0b-b1e2a89c6f1b",
+      "callback_url": "https://client.com/webhook",
+      "additional_info": [],
+      "status": "90000",
+      "status_message": "DECLINED",
+      "created_at": "2026-10-30T02:48:30+00:00",
+      "error": "Delivery Option not defined"
+    }
+  },
+  {
+    "country": "CHN",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "45742391",
+    "name": "UnionPay",
+    "works": true,
+    "status_code": "90000",
+    "message": "DECLINED (transfer_id=01a18ab5-7f06-7174-a02a-2210f769cbf7)",
+    "details": {
+      "transfer_id": "01a18ab5-7f06-7174-a02a-2210f769cbf7",
+      "external_id": "20261030094832732887",
+      "quote_id": "01a18ab5-7b21-7150-b45c-344eb40c4ee4",
+      "transaction_type": "C2C",
+      "purpose_of_remittance": "FAMILY_SUPPORT",
+      "source_of_funds": "SALARY",
+      "beneficiary_relationship": "FAMILY",
+      "credit_party_identifier": {
+        "type": "card_number",
+        "value": "6222021234567890123"
+      },
+      "sender_id": "01a18ab5-3b8f-709c-85f2-4f1d13e5b72f",
+      "beneficiary_id": "01a18ab5-7bd1-71bd-b5ac-ab666c54e600",
+      "callback_url": "https://client.com/webhook",
+      "additional_info": [],
+      "status": "90000",
+      "status_message": "DECLINED",
+      "created_at": "2026-10-30T02:48:33+00:00"
+    }
+  },
+  {
+    "country": "CHN",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "45742392",
+    "name": "Alipay",
+    "works": false,
+    "status_code": "EXCEPTION",
+    "message": "400: Transferku error: Invalid credit party identifier value format",
+    "details": {
+      "error": "400: Transferku error: Invalid credit party identifier value format"
+    }
+  },
+  {
+    "country": "CHN",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "CHNALL",
+    "name": "ALL BANKS",
+    "works": false,
+    "status_code": "4095",
+    "message": "Delivery Option not defined",
+    "details": {
+      "code": "4095",
+      "agentSessionId": "1793328515",
+      "message": "Delivery Option not defined"
+    }
+  },
+  {
+    "country": "CHN",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "CHNBAN",
+    "name": "BANK OF CHINA",
+    "works": false,
+    "status_code": "1103",
+    "message": "Max length of 11 is exceeded for ReceiverContactNumber",
+    "details": {
+      "code": "1103",
+      "agentSessionId": "1793328515",
+      "message": "Max length of 11 is exceeded for ReceiverContactNumber"
+    }
+  },
+  {
+    "country": "EUR",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "NONE",
+    "name": "No Transferku Payer",
+    "works": false,
+    "status_code": "NO_PAYER",
+    "message": "Payers not found",
+    "details": {}
+  },
+  {
+    "country": "EUR",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "EURALL01",
+    "name": "ALL EU BANKS SEPA",
+    "works": true,
+    "status_code": "5099",
+    "message": "You do not have sufficient balance to send txn",
+    "details": {
+      "code": "5099",
+      "agentSessionId": "1793328525",
+      "message": "You do not have sufficient balance to send txn"
+    }
+  },
+  {
+    "country": "GBR",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "7954481",
+    "name": "ALL GBP BANKS",
+    "works": true,
+    "status_code": "90000",
+    "message": "DECLINED (transfer_id=01a18ab5-d90e-7097-a86c-31b2b35f078f)",
+    "details": {
+      "transfer_id": "01a18ab5-d90e-7097-a86c-31b2b35f078f",
+      "external_id": "20261030094855071377",
+      "quote_id": "01a18ab5-d52e-729d-becb-1315ea9693c8",
+      "transaction_type": "C2C",
+      "purpose_of_remittance": "FAMILY_SUPPORT",
+      "source_of_funds": "SALARY",
+      "beneficiary_relationship": "FAMILY",
+      "credit_party_identifier": {
+        "type": "bank_account_number",
+        "value": "12345678",
+        "location_detail": {
+          "locationId": "GBRALL",
+          "locationName": "ALL GBP BANKS"
+        }
+      },
+      "sender_id": "01a18ab5-3b8f-709c-85f2-4f1d13e5b72f",
+      "beneficiary_id": "01a18ab5-d5c4-715e-8323-1962d5550c9a",
+      "callback_url": "https://client.com/webhook",
+      "additional_info": [],
+      "status": "90000",
+      "status_message": "DECLINED",
+      "created_at": "2026-10-30T02:48:55+00:00",
+      "error": "SENDER_IDENTITY_TYPE did not match."
+    }
+  },
+  {
+    "country": "GBR",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "GBRALL",
+    "name": "ALL GBP BANKS",
+    "works": true,
+    "status_code": "5099",
+    "message": "You do not have sufficient balance to send txn",
+    "details": {
+      "code": "5099",
+      "agentSessionId": "1793328536",
+      "message": "You do not have sufficient balance to send txn"
+    }
+  },
+  {
+    "country": "HKG",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "1482",
+    "name": "Bank of China (Hong Kong)",
+    "works": true,
+    "status_code": "90000",
+    "message": "DECLINED (transfer_id=01a18ab6-7286-7102-b23a-8207c8f429ce)",
+    "details": {
+      "transfer_id": "01a18ab6-7286-7102-b23a-8207c8f429ce",
+      "external_id": "20261030094923669165",
+      "quote_id": "01a18ab6-4266-717f-b032-3d61b1850311",
+      "transaction_type": "C2C",
+      "purpose_of_remittance": "FAMILY_SUPPORT",
+      "source_of_funds": "SALARY",
+      "beneficiary_relationship": "FAMILY",
+      "credit_party_identifier": {
+        "type": "account_number",
+        "value": "123456789012",
+        "swift": "BKCHHKHH"
+      },
+      "sender_id": "01a18ab5-3b8f-709c-85f2-4f1d13e5b72f",
+      "beneficiary_id": "01a18ab6-4316-709b-9d94-f4efd9bb7f62",
+      "callback_url": "https://client.com/webhook",
+      "additional_info": [],
+      "status": "90000",
+      "status_message": "DECLINED",
+      "created_at": "2026-10-30T02:49:35+00:00",
+      "error": "Unknown error"
+    }
+  },
+  {
+    "country": "HKG",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "487",
+    "name": "All Banks | LOCAL",
+    "works": false,
+    "status_code": "QUOTE_ERROR",
+    "message": "Quote failed: Quotation failed. Please retry later or contact support.",
+    "details": {
+      "error": "Quotation failed. Please retry later or contact support."
+    }
+  },
+  {
+    "country": "HKG",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "2102",
+    "name": "All Banks | PROXY",
+    "works": false,
+    "status_code": "QUOTE_ERROR",
+    "message": "Quote failed: Quotation failed. Please retry later or contact support.",
+    "details": {
+      "error": "Quotation failed. Please retry later or contact support."
+    }
+  },
+  {
+    "country": "HKG",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "4655",
+    "name": "All Banks | SWIFT",
+    "works": false,
+    "status_code": "QUOTE_ERROR",
+    "message": "Quote failed: Quotation failed. Please retry later or contact support.",
+    "details": {
+      "error": "Quotation failed. Please retry later or contact support."
+    }
+  },
+  {
+    "country": "HKG",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "HKGABN",
+    "name": "ABN AMRO BANK N.V.",
+    "works": false,
+    "status_code": "1103",
+    "message": "Max length of 1 is exceeded for SenderIdType",
+    "details": {
+      "code": "1103",
+      "agentSessionId": "1793328578",
+      "message": "Max length of 1 is exceeded for SenderIdType"
+    }
+  },
+  {
+    "country": "MYS",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "684534",
+    "name": "AFFIN BANK BERHAD",
+    "works": true,
+    "status_code": "90000",
+    "message": "DECLINED (transfer_id=01a18ab6-abfd-73f4-966a-96f4e2aaca6d)",
+    "details": {
+      "transfer_id": "01a18ab6-abfd-73f4-966a-96f4e2aaca6d",
+      "external_id": "20261030094949078725",
+      "quote_id": "01a18ab6-a5ff-739b-9d5f-fafc433eb5fa",
+      "transaction_type": "C2C",
+      "purpose_of_remittance": "FAMILY_SUPPORT",
+      "source_of_funds": "SALARY",
+      "beneficiary_relationship": "FAMILY",
+      "credit_party_identifier": {
+        "type": "bank_account_number",
+        "value": "123456789012",
+        "location_detail": {
+          "locationId": "MYSAFF",
+          "locationName": "AFFIN BANK BERHAD"
+        }
+      },
+      "sender_id": "01a18ab5-3b8f-709c-85f2-4f1d13e5b72f",
+      "beneficiary_id": "01a18ab6-a6a8-72b2-b7e2-89437545d77a",
+      "callback_url": "https://client.com/webhook",
+      "additional_info": [],
+      "status": "90000",
+      "status_message": "DECLINED",
+      "created_at": "2026-10-30T02:49:49+00:00",
+      "error": "SENDER_IDENTITY_TYPE did not match."
+    }
+  },
+  {
+    "country": "MYS",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "MYSAFF",
+    "name": "AFFIN BANK BERHAD",
+    "works": true,
+    "status_code": "5099",
+    "message": "You do not have sufficient balance to send txn",
+    "details": {
+      "code": "5099",
+      "agentSessionId": "1793328590",
+      "message": "You do not have sufficient balance to send txn"
+    }
+  },
+  {
+    "country": "MYS",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "MYSAFFIN",
+    "name": "AFFIN ISLAMIC BANK BERHAD",
+    "works": true,
+    "status_code": "5099",
+    "message": "You do not have sufficient balance to send txn",
+    "details": {
+      "code": "5099",
+      "agentSessionId": "1793328591",
+      "message": "You do not have sufficient balance to send txn"
+    }
+  },
+  {
+    "country": "MYS",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "MYSAL",
+    "name": "AL RAJHI BANK",
+    "works": true,
+    "status_code": "5099",
+    "message": "You do not have sufficient balance to send txn",
+    "details": {
+      "code": "5099",
+      "agentSessionId": "1793328591",
+      "message": "You do not have sufficient balance to send txn"
+    }
+  },
+  {
+    "country": "PHL",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "9",
+    "name": "All Banks | LOCAL",
+    "works": true,
+    "status_code": "90000",
+    "message": "DECLINED (transfer_id=01a18ab7-3b3c-7031-95b5-c7957ddca922)",
+    "details": {
+      "transfer_id": "01a18ab7-3b3c-7031-95b5-c7957ddca922",
+      "external_id": "20261030095016407950",
+      "quote_id": "01a18ab7-0f7b-7156-bd87-6effa16e8c59",
+      "transaction_type": "C2C",
+      "purpose_of_remittance": "FAMILY_SUPPORT",
+      "source_of_funds": "SALARY",
+      "beneficiary_relationship": "FAMILY",
+      "credit_party_identifier": {
+        "type": "account_number",
+        "value": "123456789012",
+        "swift": "BOPIPHMM"
+      },
+      "sender_id": "01a18ab5-3b8f-709c-85f2-4f1d13e5b72f",
+      "beneficiary_id": "01a18ab7-101d-7001-9a7d-f3ed5bb368cb",
+      "callback_url": "https://client.com/webhook",
+      "additional_info": [],
+      "status": "90000",
+      "status_message": "DECLINED",
+      "created_at": "2026-10-30T02:50:27+00:00",
+      "error": "Unknown error"
+    }
+  },
+  {
+    "country": "PHL",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "1781",
+    "name": "All Banks | CARD",
+    "works": false,
+    "status_code": "QUOTE_ERROR",
+    "message": "Quote failed: Quotation failed. Please retry later or contact support.",
+    "details": {
+      "error": "Quotation failed. Please retry later or contact support."
+    }
+  },
+  {
+    "country": "PHL",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "1860",
+    "name": "All Banks | CASH",
+    "works": false,
+    "status_code": "QUOTE_ERROR",
+    "message": "Quote failed: Quotation failed. Please retry later or contact support.",
+    "details": {
+      "error": "Quotation failed. Please retry later or contact support."
+    }
+  },
+  {
+    "country": "PHL",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "1853",
+    "name": "All Banks | WALLET",
+    "works": false,
+    "status_code": "QUOTE_ERROR",
+    "message": "Quote failed: Quotation failed. Please retry later or contact support.",
+    "details": {
+      "error": "Quotation failed. Please retry later or contact support."
+    }
+  },
+  {
+    "country": "PHL",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "PHLALLBA",
+    "name": "ALLBANK INC",
+    "works": false,
+    "status_code": "1103",
+    "message": "Max length of 10 is exceeded for ReceiverContactNumber",
+    "details": {
+      "code": "1103",
+      "agentSessionId": "1793328630",
+      "message": "Max length of 10 is exceeded for ReceiverContactNumber"
+    }
+  },
+  {
+    "country": "PHL",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "PHLASI",
+    "name": "ASIA UNITED BANK",
+    "works": false,
+    "status_code": "1103",
+    "message": "Max length of 10 is exceeded for ReceiverContactNumber",
+    "details": {
+      "code": "1103",
+      "agentSessionId": "1793328630",
+      "message": "Max length of 10 is exceeded for ReceiverContactNumber"
+    }
+  },
+  {
+    "country": "PHL",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "PHLBAN",
+    "name": "BANGKOK BANK PUBLIC CO., LTD",
+    "works": false,
+    "status_code": "1103",
+    "message": "Max length of 10 is exceeded for ReceiverContactNumber",
+    "details": {
+      "code": "1103",
+      "agentSessionId": "1793328630",
+      "message": "Max length of 10 is exceeded for ReceiverContactNumber"
+    }
+  },
+  {
+    "country": "PHL",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "PHLBANOF",
+    "name": "BANK OF THE PHILIPPINE ISLANDS",
+    "works": false,
+    "status_code": "1103",
+    "message": "Max length of 10 is exceeded for ReceiverContactNumber",
+    "details": {
+      "code": "1103",
+      "agentSessionId": "1793328630",
+      "message": "Max length of 10 is exceeded for ReceiverContactNumber"
+    }
+  },
+  {
+    "country": "SGP",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "1253",
+    "name": "Citibank",
+    "works": true,
+    "status_code": "90000",
+    "message": "DECLINED (transfer_id=01a18ab7-dbbf-736a-9bee-ab8d977413f2)",
+    "details": {
+      "transfer_id": "01a18ab7-dbbf-736a-9bee-ab8d977413f2",
+      "external_id": "20261030095057695026",
+      "quote_id": "01a18ab7-b164-7177-96d6-c9c2b2aecd6a",
+      "transaction_type": "C2C",
+      "purpose_of_remittance": "FAMILY_SUPPORT",
+      "source_of_funds": "SALARY",
+      "beneficiary_relationship": "FAMILY",
+      "credit_party_identifier": {
+        "type": "account_number",
+        "value": "123456789",
+        "swift": "DBSSSGSG"
+      },
+      "sender_id": "01a18ab5-3b8f-709c-85f2-4f1d13e5b72f",
+      "beneficiary_id": "01a18ab7-b20b-72b5-8fe6-826f1c7c78f4",
+      "callback_url": "https://client.com/webhook",
+      "additional_info": [],
+      "status": "90000",
+      "status_message": "DECLINED",
+      "created_at": "2026-10-30T02:51:08+00:00",
+      "error": "Unknown error"
+    }
+  },
+  {
+    "country": "SGP",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "486",
+    "name": "All Banks | LOCAL",
+    "works": false,
+    "status_code": "QUOTE_ERROR",
+    "message": "Quote failed: Quotation failed. Please retry later or contact support.",
+    "details": {
+      "error": "Quotation failed. Please retry later or contact support."
+    }
+  },
+  {
+    "country": "SGP",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "1784",
+    "name": "All Banks | CARD",
+    "works": false,
+    "status_code": "QUOTE_ERROR",
+    "message": "Quote failed: Quotation failed. Please retry later or contact support.",
+    "details": {
+      "error": "Quotation failed. Please retry later or contact support."
+    }
+  },
+  {
+    "country": "SGP",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "1843",
+    "name": "All Banks | PROXY",
+    "works": false,
+    "status_code": "QUOTE_ERROR",
+    "message": "Quote failed: Quotation failed. Please retry later or contact support.",
+    "details": {
+      "error": "Quotation failed. Please retry later or contact support."
+    }
+  },
+  {
+    "country": "SGP",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "4884",
+    "name": "All Banks | SWIFT",
+    "works": false,
+    "status_code": "QUOTE_ERROR",
+    "message": "Quote failed: Quotation failed. Please retry later or contact support.",
+    "details": {
+      "error": "Quotation failed. Please retry later or contact support."
+    }
+  },
+  {
+    "country": "SGP",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "SGPPOS5",
+    "name": "POSB BANK",
+    "works": true,
+    "status_code": "5099",
+    "message": "You do not have sufficient balance to send txn",
+    "details": {
+      "code": "5099",
+      "agentSessionId": "1793328671",
+      "message": "You do not have sufficient balance to send txn"
+    }
+  },
+  {
+    "country": "SGP",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "SGPALL",
+    "name": "Citibank",
+    "works": false,
+    "status_code": "4095",
+    "message": "Delivery Option not defined",
+    "details": {
+      "code": "4095",
+      "agentSessionId": "1793328671",
+      "message": "Delivery Option not defined"
+    }
+  },
+  {
+    "country": "THA",
+    "provider": "TRANSFERKU",
+    "payer_or_location_id": "648533",
+    "name": "BANK OF AYUDHYA PUBLIC COMPANY LTD.",
+    "works": true,
+    "status_code": "90000",
+    "message": "DECLINED (transfer_id=01a18ab8-13e8-70ba-a0c5-85d2684d0fc9)",
+    "details": {
+      "transfer_id": "01a18ab8-13e8-70ba-a0c5-85d2684d0fc9",
+      "external_id": "20261030095121638824",
+      "quote_id": "01a18ab8-0f66-7335-9437-16b0f221e796",
+      "transaction_type": "C2C",
+      "purpose_of_remittance": "FAMILY_SUPPORT",
+      "source_of_funds": "SALARY",
+      "beneficiary_relationship": "FAMILY",
+      "credit_party_identifier": {
+        "type": "bank_account_number",
+        "value": "1234567890",
+        "location_detail": {
+          "locationId": "THABAN01",
+          "locationName": "BANK OF AYUDHYA PUBLIC COMPANY LTD."
+        }
+      },
+      "sender_id": "01a18ab5-3b8f-709c-85f2-4f1d13e5b72f",
+      "beneficiary_id": "01a18ab8-101e-70a6-bc69-49e35247f9f7",
+      "callback_url": "https://client.com/webhook",
+      "additional_info": [],
+      "status": "90000",
+      "status_message": "DECLINED",
+      "created_at": "2026-10-30T02:51:22+00:00",
+      "error": "SENDER_IDENTITY_TYPE did not match."
+    }
+  },
+  {
+    "country": "THA",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "THABAN01",
+    "name": "BANK OF AYUDHYA PUBLIC COMPANY LTD.",
+    "works": true,
+    "status_code": "5099",
+    "message": "You do not have sufficient balance to send txn",
+    "details": {
+      "code": "5099",
+      "agentSessionId": "1793328683",
+      "message": "You do not have sufficient balance to send txn"
+    }
+  },
+  {
+    "country": "THA",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "THAKAS",
+    "name": "KASIKORNBANK PUBLIC COMPANY LIMITED",
+    "works": true,
+    "status_code": "5099",
+    "message": "You do not have sufficient balance to send txn",
+    "details": {
+      "code": "5099",
+      "agentSessionId": "1793328683",
+      "message": "You do not have sufficient balance to send txn"
+    }
+  },
+  {
+    "country": "THA",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "THAKIA",
+    "name": "KIATNAKIN PHATRA BANK PUBLIC COMPANY LIMITED",
+    "works": true,
+    "status_code": "5099",
+    "message": "You do not have sufficient balance to send txn",
+    "details": {
+      "code": "5099",
+      "agentSessionId": "1793328683",
+      "message": "You do not have sufficient balance to send txn"
+    }
+  },
+  {
+    "country": "THA",
+    "provider": "LIGHTREMIT",
+    "payer_or_location_id": "THASIAC2C",
+    "name": "SIAM COMMERCIAL BANK PUBLIC COMPANY LTD",
+    "works": true,
+    "status_code": "5099",
+    "message": "You do not have sufficient balance to send txn",
+    "details": {
+      "code": "5099",
+      "agentSessionId": "1793328683",
+      "message": "You do not have sufficient balance to send txn"
+    }
+  }
+]
