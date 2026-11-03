@@ -94,7 +94,28 @@ MAJOR_BANKS: dict[str, list[dict[str, Any]]] = {
         {"name": "UOB Limited", "swift": "UOVBSGSG",
          "aliases": ["UOB"]},
     ],
-    # "IDN": [...], "SGP": [...]  add other countries here
+    "AUS": [
+        {"name": "Commonwealth Bank of Australia", "swift": "CTBAAU2S",
+         "aliases": ["COMMONWEALTHBANK", "COMMONWEALTHBANKOFAUSTRALIA", "CBA"]},
+        {"name": "Westpac Banking Corporation", "swift": "WPACAU2S",
+         "aliases": ["WESTPAC", "WESTPACBANKING"]},
+        {"name": "Australia and New Zealand Banking Group", "swift": "ANZBAU3M",
+         "aliases": ["ANZBANK", "AUSTRALIAANDNEWZEALANDBANKING", "ANZ"]},
+        {"name": "National Australia Bank", "swift": "NATAAU33",
+         "aliases": ["NATIONALAUSTRALIABANK", "NAB"]},
+        {"name": "Macquarie Bank", "swift": "MACQAU2S",
+         "aliases": ["MACQUARIE", "MACQUARIEBANK"]},
+        {"name": "Bendigo and Adelaide Bank", "swift": "BENDAU3B",
+         "aliases": ["BENDIGOBANK", "BENDIGOANDADELAIDEBANK"]},
+        {"name": "Suncorp Bank", "swift": "METWAU4B",
+         "aliases": ["SUNCORP", "SUNCORPBANK", "SUNCORPMETWAY"]},
+        {"name": "Bank of Queensland", "swift": "QBANAU4B",
+         "aliases": ["BANKOFQUEENSLAND", "BOQ"]},
+        {"name": "ING Bank (Australia)", "swift": "INGBAU2S",
+         "aliases": ["INGBANK", "INGBANKAUSTRALIA"]},
+        {"name": "HSBC Bank Australia", "swift": "HKBAAU2S",
+         "aliases": ["HSBC", "HSBCBANKAUSTRALIA"]},
+    ],
 }
 
 def enrich_catalogue(catalogue_type: str, raw_result: list[dict]) -> list[dict]:
@@ -852,7 +873,12 @@ def merge_locations(
             "canonical_id": loc["value"],
             "name": loc["description"],
             "credit_party_identifiers_accepted": ["bank_account_number"],
-            "providers": {"lightremit": {"location_id": loc["value"]}},
+            "providers": {
+                "lightremit": {
+                    "location_id": loc["value"],
+                    "location_name": loc["description"],
+                }
+            },
         }
     for loc in tk:
         key = mapping.get(loc["value"]) or loc["value"]   # unmapped -> its own entry
@@ -866,6 +892,7 @@ def merge_locations(
         entry["credit_party_identifiers_accepted"] = identifiers
         entry["providers"]["transferku"] = {
             "location_id": loc["value"],
+            "location_name": loc["description"],
             "payer_id": loc.get("payer_id") or loc["optionalField"],
             "transaction_type": loc.get("transaction_type") or target_tx,
             "credit_party_identifiers_accepted": identifiers,
@@ -968,7 +995,9 @@ def enrich_locations_with_major_banks(
     for loc in all_banks_entries:
         lr_cfg = loc.get("providers", {}).get("lightremit")
         if lr_cfg:
-            all_banks_provider_template["lightremit"] = dict(lr_cfg)
+            tpl = dict(lr_cfg)
+            tpl.setdefault("location_name", loc.get("name", ""))
+            all_banks_provider_template["lightremit"] = tpl
             break
 
     # 2. Transferku template: find all-banks entry with transferku (preferring "SWIFT" in name)
@@ -982,14 +1011,16 @@ def enrich_locations_with_major_banks(
         None,
     )
     if tk_swift_entry:
-        all_banks_provider_template["transferku"] = dict(
-            tk_swift_entry["providers"]["transferku"]
-        )
+        tpl = dict(tk_swift_entry["providers"]["transferku"])
+        tpl.setdefault("location_name", tk_swift_entry.get("name", ""))
+        all_banks_provider_template["transferku"] = tpl
     else:
         for loc in all_banks_entries:
             tk_cfg = loc.get("providers", {}).get("transferku")
             if tk_cfg:
-                all_banks_provider_template["transferku"] = dict(tk_cfg)
+                tpl = dict(tk_cfg)
+                tpl.setdefault("location_name", loc.get("name", ""))
+                all_banks_provider_template["transferku"] = tpl
                 break
 
     regular_locations: list[dict] = []
@@ -1199,7 +1230,11 @@ async def fetch_locations_from_both(
     # 1. Fresh cache hit
     if not force_refresh:
         cached = await _read_json(r, keys["fresh"])
-        if cached:
+        if cached and all(
+            "location_name" in p
+            for loc in cached.get("locations", [])
+            for p in (loc.get("providers") or {}).values()
+        ):
             return {**cached, "source": "cache"}
 
     # 2. Single-flight: only one worker rebuilds, the others wait for its result

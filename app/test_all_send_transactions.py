@@ -26,7 +26,8 @@ COUNTRY_IDENTIFIER_DEFAULTS = {
     "AUS": {
         "bank_account_number": "123456789",
         "bank_branch_name": "012345",  # BSB code
-        "swift_code": "CTBAAU2S",
+        # "swift_code": "CTBAAU2S",
+        # "bank_branch_code": "012345",
     },
     "CHN": {
         "bank_account_number": "6222021234567890123",
