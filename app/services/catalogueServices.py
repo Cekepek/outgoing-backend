@@ -43,6 +43,18 @@ CURRENCY_NAME = {
     "THA": "THB",
 }
 
+COUNTRY_BANK_IDENTIFIERS: dict[str, list[str]] = {
+    "AUS": ["bank_account_number", "bsb_code", "location_detail"],
+    "CHN": ["bank_account_number", "location_detail"],
+    "EUR": ["iban", "swift","bank_account_number"],
+    "GBR": ["bank_account_number", "location_detail"],
+    "HKG": ["swift", "account_number"],
+    "MYS": ["bank_account_number", "location_detail"],
+    "PHL": ["swift", "account_number"],
+    "SGP": ["swift", "account_number"],
+    "THA": ["bank_account_number", "location_detail"],
+}
+
 MAJOR_BANKS: dict[str, list[dict[str, Any]]] = {
     "HKG": [
         {"name": "Bank of China (Hong Kong)", "swift": "BKCHHKHH",
@@ -858,44 +870,71 @@ def extract_transferku_locations(
 
     return locations
 
+def _merge_identifiers(iso_code: str, tk_identifiers: list[str] | None = None) -> list[str]:
+    baseline = list(COUNTRY_BANK_IDENTIFIERS.get((iso_code or "").strip().upper(), ["bank_account_number"]))
+    if not tk_identifiers:
+        return baseline
+    if not any(k in tk_identifiers for k in ("bank_account_number", "account_number", "iban")) or "wallet" in tk_identifiers:
+        return list(tk_identifiers)
+    merged = list(tk_identifiers)
+    alias_groups = (
+        {"bank_account_number", "account_number", "iban"},
+        {"swift", "swift_code", "swift_bic_code"},
+        {"bsb_code", "sort_code", "bank_branch_name", "bank_branch_code"},
+    )
+    for item in baseline:
+        if item in merged:
+            continue
+        if any(item in grp and (grp & set(merged)) for grp in alias_groups):
+            continue
+        merged.append(item)
+    return merged
+
+
 def merge_locations(
     lr: list[dict],
     tk: list[dict],
     mapping: dict[str, str],
     transaction_type: str = "C2C",
+    iso_code: str = "",
 ) -> list[dict]:
     """mapping: transferku location_id -> lightremit location_id (curated)."""
     merged: dict[str, dict] = {}
     target_tx = (transaction_type or "C2C").upper()
+    default_identifiers = _merge_identifiers(iso_code)
 
     for loc in lr:
         merged[loc["value"]] = {
             "canonical_id": loc["value"],
             "name": loc["description"],
-            "credit_party_identifiers_accepted": ["bank_account_number"],
+            "credit_party_identifiers_accepted": list(default_identifiers),
             "providers": {
                 "lightremit": {
                     "location_id": loc["value"],
                     "location_name": loc["description"],
+                    "credit_party_identifiers_accepted": list(default_identifiers),
                 }
             },
         }
     for loc in tk:
         key = mapping.get(loc["value"]) or loc["value"]   # unmapped -> its own entry
-        identifiers = loc.get("credit_party_identifiers_accepted") or ["bank_account_number"]
+        tk_identifiers = loc.get("credit_party_identifiers_accepted") or list(default_identifiers)
         entry = merged.setdefault(key, {
             "canonical_id": key,
             "name": loc["description"],
-            "credit_party_identifiers_accepted": identifiers,
+            "credit_party_identifiers_accepted": list(tk_identifiers),
             "providers": {},
         })
-        entry["credit_party_identifiers_accepted"] = identifiers
+        if "lightremit" in entry["providers"]:
+            entry["credit_party_identifiers_accepted"] = _merge_identifiers(iso_code, tk_identifiers)
+        else:
+            entry["credit_party_identifiers_accepted"] = list(tk_identifiers)
         entry["providers"]["transferku"] = {
             "location_id": loc["value"],
             "location_name": loc["description"],
             "payer_id": loc.get("payer_id") or loc["optionalField"],
             "transaction_type": loc.get("transaction_type") or target_tx,
-            "credit_party_identifiers_accepted": identifiers,
+            "credit_party_identifiers_accepted": list(tk_identifiers),
         }
     return list(merged.values())
 
@@ -991,12 +1030,15 @@ def enrich_locations_with_major_banks(
     # Extract provider templates from "All Banks" entries for both LightRemit and Transferku
     all_banks_provider_template: dict[str, Any] = {}
 
+    default_identifiers = _merge_identifiers(country_iso)
+
     # 1. LightRemit template: find any all-banks entry with a lightremit provider
     for loc in all_banks_entries:
         lr_cfg = loc.get("providers", {}).get("lightremit")
         if lr_cfg:
             tpl = dict(lr_cfg)
             tpl.setdefault("location_name", loc.get("name", ""))
+            tpl.setdefault("credit_party_identifiers_accepted", list(default_identifiers))
             all_banks_provider_template["lightremit"] = tpl
             break
 
@@ -1023,6 +1065,11 @@ def enrich_locations_with_major_banks(
                 all_banks_provider_template["transferku"] = tpl
                 break
 
+    template_identifiers = _merge_identifiers(
+        country_iso,
+        (all_banks_provider_template.get("transferku") or {}).get("credit_party_identifiers_accepted"),
+    )
+
     regular_locations: list[dict] = []
     for loc in locations:
         if not is_all_banks_location(loc):
@@ -1047,10 +1094,7 @@ def enrich_locations_with_major_banks(
                         if p_name not in providers:
                             providers[p_name] = dict(p_cfg)
                     loc["providers"] = providers
-                    if "transferku" in all_banks_provider_template:
-                        tk_tpl = all_banks_provider_template["transferku"]
-                        if "credit_party_identifiers_accepted" in tk_tpl:
-                            loc["credit_party_identifiers_accepted"] = tk_tpl["credit_party_identifiers_accepted"]
+                    loc["credit_party_identifiers_accepted"] = list(template_identifiers)
 
                 matched_major_indices.add(idx)
                 break
@@ -1072,13 +1116,12 @@ def enrich_locations_with_major_banks(
             for p_name, p_cfg in all_banks_provider_template.items()
         }
 
-        tk_tpl = providers.get("transferku") or {}
         new_entry = {
             "canonical_id": canonical_id,
             "name": major["name"],
             "swift": swift_code,
             "swift_code": swift_code,
-            "credit_party_identifiers_accepted": tk_tpl.get("credit_party_identifiers_accepted", ["bank_account_number"]),
+            "credit_party_identifiers_accepted": list(template_identifiers),
             "providers": providers,
         }
         new_locations.append(new_entry)
@@ -1147,14 +1190,20 @@ async def _build_locations(
         if row["status"] == "approved"
     }
     merged_locations = merge_locations(
-        lr_locations, tk_locations, mapping, transaction_type=transaction_type or "C2C"
+        lr_locations,
+        tk_locations,
+        mapping,
+        transaction_type=transaction_type or "C2C",
+        iso_code=country_iso,
     )
     enriched_locations = enrich_locations_with_major_banks(merged_locations, country_iso)
 
     for loc in enriched_locations:
-        if "credit_party_identifiers_accepted" not in loc:
+        if not loc.get("credit_party_identifiers_accepted"):
             tk_prov = loc.get("providers", {}).get("transferku", {})
-            loc["credit_party_identifiers_accepted"] = tk_prov.get("credit_party_identifiers_accepted", ["bank_account_number"])
+            loc["credit_party_identifiers_accepted"] = _merge_identifiers(
+                country_iso, tk_prov.get("credit_party_identifiers_accepted")
+            )
 
     return {
         "iso_code": country_iso,
@@ -1231,7 +1280,7 @@ async def fetch_locations_from_both(
     if not force_refresh:
         cached = await _read_json(r, keys["fresh"])
         if cached and all(
-            "location_name" in p
+            "location_name" in p and "credit_party_identifiers_accepted" in p
             for loc in cached.get("locations", [])
             for p in (loc.get("providers") or {}).values()
         ):

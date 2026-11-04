@@ -81,6 +81,52 @@ async def build_lightremit_payload(
         "representative_address", "representative_contact_number",
     })
 
+    cpi = req.credit_party_identifier if isinstance(req.credit_party_identifier, dict) else {}
+    extra = req.additional_info if isinstance(req.additional_info, dict) else {}
+    loc_detail = cpi.get("location_detail") if isinstance(cpi.get("location_detail"), dict) else {}
+
+    if not req_data.get("bank_account_number"):
+        req_data["bank_account_number"] = str(
+            cpi.get("bank_account_number")
+            or cpi.get("account_number")
+            or cpi.get("iban")
+            or req.iban
+            or cpi.get("value")
+            or extra.get("bank_account_number")
+            or extra.get("account_number")
+            or extra.get("iban")
+            or ""
+        )
+    if not req_data.get("bank_branch_name"):
+        req_data["bank_branch_name"] = str(
+            req.bank_branch_code
+            or cpi.get("bsb_code")
+            or cpi.get("sort_code")
+            or cpi.get("bank_branch_name")
+            or cpi.get("bank_branch_code")
+            or extra.get("bsb_code")
+            or extra.get("sort_code")
+            or extra.get("bank_branch_name")
+            or extra.get("bank_branch_code")
+            or ""
+        )
+    if not req_data.get("swift_code"):
+        req_data["swift_code"] = str(
+            cpi.get("swift")
+            or cpi.get("swift_code")
+            or cpi.get("swift_bic_code")
+            or extra.get("swift")
+            or extra.get("swift_code")
+            or extra.get("swift_bic_code")
+            or ""
+        )
+    if not req_data.get("bank_name"):
+        req_data["bank_name"] = str(
+            req.location_name
+            or loc_detail.get("locationName")
+            or ""
+        )
+
     # Normalize receiver_id_type and representative_id_type to Lightremit format
     if req_data.get("receiver_id_type"):
         req_data["receiver_id_type"] = to_lightremit_id_type(
@@ -96,7 +142,7 @@ async def build_lightremit_payload(
     return LightRemitSendTransactionPayload(
         agent_session_id=agent_session_id,
         agent_txn_id=agent_txn_id,
-        location_id=req.location_id,
+        location_id=req.location_id or str(loc_detail.get("locationId") or ""),
         purpose_of_remittance=req.purpose_of_remittance,
         sender_beneficiary_relationship=req.sender_beneficiary_relationship,
         sender_source_of_fund=req.sender_source_of_fund,

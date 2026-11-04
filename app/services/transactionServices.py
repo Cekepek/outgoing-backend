@@ -645,10 +645,18 @@ def build_transferku_credit_party_identifier(
     bank_branch_name = (
         req.bank_branch_name
         or req.bank_branch_code
+        or additional.get("bsb_code")
+        or additional.get("sort_code")
         or additional.get("bank_branch_name")
         or additional.get("bank_branch_code")
     )
-    swift_bic_code = req.swift_code or getattr(req, "swift_bic_code", None) or additional.get("swift_bic_code") or additional.get("swift_code")
+    swift_bic_code = (
+        req.swift_code
+        or getattr(req, "swift_bic_code", None)
+        or additional.get("swift")
+        or additional.get("swift_bic_code")
+        or additional.get("swift_code")
+    )
     iban = getattr(req, "iban", None) or additional.get("iban") or (bank_account_number if bank_account_number and bank_account_number[:2].isalpha() else None)
 
     field_pool: dict[str, Any] = {
